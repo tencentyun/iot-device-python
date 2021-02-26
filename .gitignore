@@ -1,0 +1,6 @@
+.DS_Store
+.idea/
+build/
+dist/
+iot_explorer_sdk.egg-info/
+test_env/
