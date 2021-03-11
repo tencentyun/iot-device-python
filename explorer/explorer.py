@@ -1242,6 +1242,7 @@ QVrcRBDxzx/G\n\
         self.__user_on_unsubscribe(value, self.__user_data)
         pass
 
+    #云端下发指令
     def __user_thread_on_message_callback(self, value):
         # client, user_data, message = value
         message = value

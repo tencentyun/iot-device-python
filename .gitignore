@@ -4,3 +4,5 @@ build/
 dist/
 iot_explorer_sdk.egg-info/
 test_env/
+samples/
+build.sh
