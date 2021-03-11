@@ -1210,7 +1210,7 @@ QVrcRBDxzx/G\n\
     pass
 
     def __on_unsubscribe(self, client, user_data, mid):
-        self.__user_thread.post_message(self.__user_on_unsubscribe, (mid))
+        self.__user_thread.post_message(self.__user_cmd_on_unsubscribe, (mid))
 
     pass
 
@@ -1242,6 +1242,7 @@ QVrcRBDxzx/G\n\
         self.__user_on_unsubscribe(value, self.__user_data)
         pass
 
+    #云端下发指令
     def __user_thread_on_message_callback(self, value):
         # client, user_data, message = value
         message = value
@@ -1758,6 +1759,58 @@ QVrcRBDxzx/G\n\
         if rc != 0:
             return 1
         return 0
+
+    def clear_control(self):
+        topic_pub = self.__topic_info.template_property_topic_pub
+        clientToken = self.__topic_info.control_clientToken
+
+        # IOT_Template_ClearControl
+        message = {
+            "method": "clear_control",
+            "clientToken": clientToken
+        }
+        rc, mid = self.topic_publish(topic_pub, message, 0)
+        # should deal mid
+        self.__explorer_log.debug("mid:%d" % mid)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        pass
+
+    def template_deinit(self):
+        if self.__explorer_state is not QcloudExplorer.ExplorerState.CONNECTED:
+            raise QcloudExplorer.StateError("current state is not CONNECTED")
+
+
+        template_topic_sub = self.__topic_info.template_property_topic_sub
+        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        # should deal mid
+        self.__explorer_log.debug("mid:%d" % mid)
+        if sub_res != 0:
+            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            return 1
+
+        self.__is_subscribed_property_topic = False
+
+        
+        template_topic_sub = self.__topic_info.template_event_topic_sub
+        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        # should deal mid
+        self.__explorer_log.debug("mid:%d" % mid)
+        if sub_res != 0:
+            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            return 1
+
+        template_topic_sub = self.__topic_info.template_action_topic_sub
+        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        # should deal mid
+        self.__explorer_log.debug("mid:%d" % mid)
+        if sub_res != 0:
+            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            return 1
+        else:
+            return 0
+
+        pass
 
     # gateway
     # 网关子设备数据模板回调注册
