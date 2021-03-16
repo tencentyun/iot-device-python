@@ -1,17 +1,27 @@
+import json
+import re
+import urllib.request
 import setuptools
+
+name = "iot-explorer-sdk"
+resp = urllib.request.urlopen(f'https://pypi.org/pypi/{name}/json')
+data = json.loads(resp.read().decode("utf-8"))
+version = data['info']['version']
+last_num = re.findall(r'\d+', version)[-1]
+version = version[:-len(last_num)] + str(int(last_num) + 1)
 
 with open("README.md", mode='r', encoding='UTF-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="iot-explorer-sdk",
-    version="0.0.0",
-    author="Tencent IoT Explorer Python SDK",
-    author_email="",
+    name=("%s" % name),
+    version=f"{version}",
+    author="iotdeveloper",
+    author_email="dev_tester@163.com",
     description="Tencent IoT Explorer SDK for Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/tencentyun/iot-device-python",
     packages=setuptools.find_packages(),
     install_requires=['paho-mqtt'],
     classifiers=[
