@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed14688b_392306bf",
+        "filename": "explorer/doc/属性上报.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "这种最好有个说明文档，不然用户看着可能会有点懵",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 16
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97f3691d_a28bc6da",
+        "filename": "explorer/doc/控制设备上下线.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "最好填入YOUR_PRODUCT_ID，避免空着",
+      "range": {
+        "startLine": 28,
+        "startChar": 16,
+        "endLine": 28,
+        "endChar": 18
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3db0883_abfc1349",
+        "filename": "explorer/doc/控制设备上下线.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "证书方式实现了吗",
+      "range": {
+        "startLine": 57,
+        "startChar": 5,
+        "endLine": 57,
+        "endChar": 11
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57732418_49abe9eb",
+        "filename": "explorer/doc/控制设备上下线.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "是否成连接需要考虑不同qos情况",
+      "range": {
+        "startLine": 99,
+        "startChar": 11,
+        "endLine": 99,
+        "endChar": 18
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11ba1286_10e08950",
+        "filename": "explorer/doc/检查固件更新.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "这边是异步连接，需要等待连接成功",
+      "range": {
+        "startLine": 32,
+        "startChar": 3,
+        "endLine": 32,
+        "endChar": 16
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ef59d86_fd7f1974",
+        "filename": "explorer/doc/获取设备最新上报信息.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "这种消息需要回转至sample",
+      "range": {
+        "startLine": 33,
+        "startChar": 154,
+        "endLine": 33,
+        "endChar": 170
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20355367_cea7f5e4",
+        "filename": "explorer/doc/获取设备最新上报信息.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-03-17T06:13:43Z",
+      "side": 1,
+      "message": "还有这个",
+      "range": {
+        "startLine": 41,
+        "startChar": 154,
+        "endLine": 41,
+        "endChar": 173
+      },
+      "revId": "27493c671304fa80b3aa98d9376f97e4a7817069",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
