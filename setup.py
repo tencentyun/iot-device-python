@@ -3,7 +3,7 @@ import re
 import urllib.request
 import setuptools
 
-name = "iot-explorer-sdk"
+name = "TIoTExploreSDK"
 resp = urllib.request.urlopen(f'https://pypi.org/pypi/{name}/json')
 data = json.loads(resp.read().decode("utf-8"))
 version = data['info']['version']
@@ -16,7 +16,7 @@ with open("README.md", mode='r', encoding='UTF-8') as fh:
 setuptools.setup(
     name=("%s" % name),
     version=f"{version}",
-    author="iotdeveloper",
+    author="larrytin",
     author_email="dev_tester@163.com",
     description="Tencent IoT Explorer SDK for Python",
     long_description=long_description,
