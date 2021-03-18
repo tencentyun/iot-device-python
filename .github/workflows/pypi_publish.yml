@@ -25,10 +25,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
 
+    - name: Publish to Test PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.IOT_TEST_PYPI_UPLOAD_TOKEN }}
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        
     - name: Publish to PyPI
+      if: startsWith(github.event.ref, 'refs/tags')
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.IOT_PYPI_UPLOAD_TOKEN }}
       run: |
+        rm -rf dist/
+        sed -i "s#resp = urllib.request.*#resp = urllib.request.urlopen(f\'https://pypi.org/pypi/{name}/json\')#g" setup.py
+        
         python setup.py sdist bdist_wheel
         twine upload dist/*
