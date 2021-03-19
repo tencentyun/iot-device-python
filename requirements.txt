@@ -1,1 +1,2 @@
-pycryptodome==3.9.8
+paho-mqtt==1.5.1
+pycrypto==2.6.1

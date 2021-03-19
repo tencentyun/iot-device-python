@@ -25,6 +25,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
 
+    - name: Unittest TestCase
+      run: |
+        python -m venv test_env
+        source test_env/bin/activate
+        python setup.py install
+        pip install -r requirements.txt
+        python sample/test.py
+
     - name: Publish to Test PyPI
       env:
         TWINE_USERNAME: __token__
