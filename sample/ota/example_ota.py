@@ -8,7 +8,7 @@ from explorer import explorer
 __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
 logging.basicConfig(format=__log_format)
 
-te = explorer.QcloudExplorer(device_file="../device_info.json")
+te = explorer.QcloudExplorer(device_file="sample/device_info.json")
 te.enable_logger(logging.DEBUG)
 
 g_report_res = False
