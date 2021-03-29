@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fec33796_be1d4c03",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-03-29T08:43:17Z",
+      "side": 1,
+      "message": "订阅消息Topic: $rrpc/rxd/{productID}/{deviceName}/+",
+      "revId": "0414ed6d72b06bd380b28fbd2e606e448429a530",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
