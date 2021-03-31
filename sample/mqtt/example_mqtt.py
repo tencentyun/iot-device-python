@@ -64,3 +64,6 @@ def example_mqtt():
             else:
                 sys.exit()
     '''
+
+# if __name__ == '__main__':
+#     example_mqtt()

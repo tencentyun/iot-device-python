@@ -108,7 +108,7 @@ def example_template():
     te.on_template_action = on_template_action
 
 
-    te.template_setup("./template_config.json")
+    te.template_setup("sample/template/template_config.json")
     te.mqtt_init(mqtt_domain="")
     te.connect_async()
 
