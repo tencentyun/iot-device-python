@@ -51,8 +51,8 @@ def example_mqtt():
     te.mqtt_init(mqtt_domain="")
     te.connect_async()
 
-    return True
-    '''
+    # return True
+    # '''
     while True:
         try:
             msg = input()
@@ -63,4 +63,7 @@ def example_mqtt():
                 te.disconnect()
             else:
                 sys.exit()
-    '''
+    # '''
+
+if __name__ == '__main__':
+    example_mqtt()
