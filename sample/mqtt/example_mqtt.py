@@ -37,7 +37,7 @@ def example_mqtt():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json")
+    te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=False)
     te.enable_logger(logging.DEBUG)
 
     te.user_on_connect = on_connect
@@ -48,7 +48,7 @@ def example_mqtt():
     te.user_on_unsubscribe = on_unsubscribe
 
 
-    te.mqtt_init(mqtt_domain="")
+    te.mqtt_init(mqtt_domain="", useWebsocket=True)
     te.connect_async()
 
     return True
@@ -63,7 +63,6 @@ def example_mqtt():
                 te.disconnect()
             else:
                 sys.exit()
-    '''
-
+    # '''
 # if __name__ == '__main__':
 #     example_mqtt()

@@ -83,6 +83,7 @@ QVrcRBDxzx/G\n\
 
         # mqtt set
         self.__set_mqtt_param()
+        self.__useWebsocket = None
 
         # topic
         self.__user_topics_subscribe_request = {}
@@ -317,6 +318,8 @@ QVrcRBDxzx/G\n\
     def __set_mqtt_param(self):
         self.__mqtt_tls_port = 8883
         self.__mqtt_tcp_port = 1883
+        self.__mqtt_socket_tls_port = 443
+        self.__mqtt_socket_tcp_port = 80
         self.__mqtt_protocol = "MQTTv31"
         self.__mqtt_transport = "TCP"
         self.__mqtt_secure = "TLS"
@@ -618,13 +621,15 @@ QVrcRBDxzx/G\n\
         else:
             return False
 
-    def mqtt_init(self, mqtt_domain):
+    def mqtt_init(self, mqtt_domain, useWebsocket=False):
         self.__explorer_log.debug("mqtt_init")
         timestamp = str(int(round(time.time() * 1000)))
 
         device_name = self.__device_file.device_name
         product_id = self.__device_file.product_id
         device_secret = self.__device_file.device_secret
+
+        self.__useWebsocket = useWebsocket
 
         self.__topic_info = QcloudHub.Topic(product_id, device_name)
 
@@ -654,10 +659,24 @@ QVrcRBDxzx/G\n\
             mqtt_protocol_version = mqtt.MQTTv311
         elif self.__mqtt_protocol == "MQTTv31":
             mqtt_protocol_version = mqtt.MQTTv31
-        self.__mqtt_client = mqtt.Client(client_id=client_id,
-                                         clean_session=self.__mqtt_clean_session,
-                                         protocol=mqtt_protocol_version)
 
+        if self.__useWebsocket:
+            if self.__tls:
+                self.__host = "wss:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            else:
+                self.__host = "ws:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            pass
+
+            self.__mqtt_client = mqtt.Client(client_id=client_id,
+                                             clean_session=self.__mqtt_clean_session,
+                                             protocol=mqtt_protocol_version,
+                                             transport="websockets")
+        else:
+            self.__mqtt_client = mqtt.Client(client_id=client_id,
+                                             clean_session=self.__mqtt_clean_session,
+                                             protocol=mqtt_protocol_version)
+
+        self.__explorer_log.debug("current_host: %s" % self.__host)
         if self.__explorer_log.is_enabled():
             self.__mqtt_client.enable_logger(self.__PahoLog)
 
@@ -888,6 +907,11 @@ QVrcRBDxzx/G\n\
         if self.__tls:
             try:
                 mqtt_port = self.__mqtt_tls_port
+
+                if self.__useWebsocket:
+                    mqtt_port = self.__mqtt_socket_tls_port
+                    pass
+
                 self.__ssl_init()
             except ssl.SSLError as e:
                 self.__explorer_log.error("ssl init error:" + str(e))
@@ -898,8 +922,12 @@ QVrcRBDxzx/G\n\
         else:
             mqtt_port = self.__mqtt_tcp_port
 
+            if self.__useWebsocket:
+                mqtt_port = self.__mqtt_socket_tcp_port
+                pass
+
         try:
-            self.__explorer_log.debug("connect_async...")
+            self.__explorer_log.debug("connect_async...%s", mqtt_port)
             self.__mqtt_client.connect_async(host=self.__host, port=mqtt_port, keepalive=self.__mqtt_keep_alive)
         except Exception as e:
             self.__explorer_log.error("mqtt connect with async error:" + str(e))
