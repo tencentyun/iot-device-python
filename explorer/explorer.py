@@ -170,6 +170,10 @@ QVrcRBDxzx/G\n\
         # ota
         self.__user_on_ota_report = None
 
+        # rrpc callback
+        self.__user_on_rrpc_message = None
+        self.__process_id = None
+
         # construct thread handle
         self.__loop_thread = QcloudHub.LoopThread(self.__explorer_log)
         self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
@@ -238,6 +242,14 @@ QVrcRBDxzx/G\n\
     def user_on_ota_report(self, value):
         self.__user_on_ota_report = value
         pass
+
+    @property
+    def user_on_rrpc_message(self):
+        return self.__user_on_rrpc_message
+
+    @user_on_rrpc_message.setter
+    def user_on_rrpc_message(self, value):
+        self.__user_on_rrpc_message = value
 
     @property
     def on_template_prop_changed(self):
@@ -507,6 +519,24 @@ QVrcRBDxzx/G\n\
         elif ptype == "update_firmware":
             self.__ota_info_get(payload)
 
+    def __rrpc_get_process_id(self, topic):
+        pos = topic.rfind("/")
+        if pos > 0:
+            self.__process_id = topic[pos + 1:len(topic)]
+            return 0
+        else:
+            self.__explorer_log.error("cannot found process id from topic:%s" % topic)
+            return -1
+
+    def __handle_rrpc(self, topic, payload):
+        rc = self.__rrpc_get_process_id(topic)
+        if rc < 0:
+            raise QcloudExplorer.StateError("cannot found process id")
+
+        # 调用用户注册的回调
+        if self.__user_on_rrpc_message is not None:
+            self.__user_on_rrpc_message(payload, self.__user_data)
+
     def topic_subscribe(self, topic, qos):
         self.__explorer_log.debug("sub topic:%s,qos:%d" % (topic, qos))
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
@@ -737,6 +767,7 @@ QVrcRBDxzx/G\n\
     def __on_subscribe(self, client, user_data, mid, granted_qos):
         self.__explorer_log.info("__on_subscribe:user_data:%s,mid:%d,qos:%s" % (user_data, mid, granted_qos))
         qos = granted_qos[0]
+        # __ota_subscribe_res可以用于所有订阅,mid必不相同
         self.__ota_subscribe_res[mid] = qos
         self.__user_thread.post_message(self.__user_cmd_on_subscribe, (qos, mid))
 
@@ -829,10 +860,12 @@ QVrcRBDxzx/G\n\
             self.__handle_gateway(payload)
         elif topic == self.__topic_info.ota_update_topic_sub:
             self.__handle_ota(payload)
+        elif self.__topic_info.rrpc_topic_sub_prefix in topic:
+            self.__handle_rrpc(topic, payload)
         else:
             rc = self.__handle_nonStandard_topic(topic, payload)
             if rc != 0:
-                self.__explorer_log.error("topic:%s not know" % topic)
+                self.__explorer_log.error("unknow topic:%s" % topic)
         pass
 
     def __reconnect_wait(self):
@@ -1980,3 +2013,28 @@ QVrcRBDxzx/G\n\
         self.__ota_manager.md5.update(buf)
 
         return buf, rv_len
+
+
+    def rrpc_init(self):
+        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
+            raise QcloudHub.StateError("current state is not CONNECTED")
+
+        rrpc_topic_sub = self.__topic_info.rrpc_topic_sub_prefix + "+"
+        sub_res, mid = self.topic_subscribe(rrpc_topic_sub, 0)
+        if sub_res != 0:
+            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
+            return 1
+        # 判断订阅是否成功(qos0)
+        return 0
+
+    def rrpc_reply(self, reply, length):
+        if reply is None or length == 0:
+            raise ValueError('Invalid length.')
+        if self.__process_id is None:
+            raise ValueError('no process id')
+        topic = self.__topic_info.rrpc_topic_pub_prefix + self.__process_id
+        rc, mid = self.topic_publish(topic, reply, 0)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            return -1, mid
+        return rc, mid

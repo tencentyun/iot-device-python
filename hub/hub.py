@@ -204,6 +204,7 @@ class QcloudHub(object):
             self.__product_id = None
             self.__product_secret = None
             self.__device_secret = None
+            self.__region = None
             if self.__logger is not None:
                 self.__logger.info('device_info file {}'.format(file_path))
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -212,6 +213,7 @@ class QcloudHub(object):
                 self.__product_id = self.__json_data['productId']
                 self.__product_secret = self.__json_data['productSecret']
                 self.__device_secret = self.__json_data['key_deviceinfo']['deviceSecret']
+                self.__region = self.__json_data["region"]
             if self.__logger is not None:
                 self.__logger.info(
                     "device name: {}, product id: {}, product secret: {}, device secret: {}".
@@ -233,6 +235,10 @@ class QcloudHub(object):
         @property
         def device_secret(self):
             return self.__device_secret
+
+        @property
+        def region(self):
+            return self.__region
 
         @property
         def json_data(self):
@@ -295,6 +301,10 @@ class QcloudHub(object):
             # ota topic
             self.__ota_report_topic_pub = "$ota/report/%s/%s" % (product_id, device_name)
             self.__ota_update_topic_sub = "$ota/update/%s/%s" % (product_id, device_name)
+
+            # rrpc topic
+            self.__rrpc_topic_pub_prefix = "$rrpc/txd/%s/%s/" % (product_id, device_name)
+            self.__rrpc_topic_sub_prefix = "$rrpc/rxd/%s/%s/" % (product_id, device_name)
             pass
 
         @property
@@ -356,6 +366,14 @@ class QcloudHub(object):
         @property
         def ota_report_topic_pub(self):
             return self.__ota_report_topic_pub
+
+        @property
+        def rrpc_topic_pub_prefix(self):
+            return self.__rrpc_topic_pub_prefix
+
+        @property
+        def rrpc_topic_sub_prefix(self):
+            return self.__rrpc_topic_sub_prefix
 
         @property
         def control_clientToken(self):
