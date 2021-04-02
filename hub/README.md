@@ -21,7 +21,7 @@
 SDK支持远程pip依赖，以及本地源码依赖，详细接入步骤请参考 [SDK接入说明](doc/SDK接入说明.md)
 
 ## 下载IoT Hub Python-SDK Demo示例代码
-下载[仓库](../)下完整代码，IoT Hub Python-SDK Demo示例代码在 [hub-device-python](../) 的module下。
+下载[仓库](../../../)下完整代码，IoT Hub Python-SDK Demo示例代码在 [iot-device-python/sample](../../../tree/master/sample) 的module下。
 
 
 ## 功能文档

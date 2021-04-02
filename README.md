@@ -8,7 +8,7 @@
 
 该仓库提供了 IoT Hub 设备端SDK，设备厂商可以通过 SDK 集成到 Python 环境设备上，将设备安全的接入到腾讯云物联网通信平台。
 
-* [腾讯云物联网通信（IoT Hub）设备端 Python-SDK](hub/README.md)
+* [腾讯云物联网通信（IoT Hub）设备端 Python-SDK](hub/)
 
 
 ## 腾讯云物联网开发平台（IoT Explorer）Python SDK
@@ -17,7 +17,7 @@
 
 该仓库提供了 IoT Explorer 设备端SDK，用户可以通过SDK，由 python 语言开发设备接入驱动，或者集成到 python 环境设备上，将设备安全的接入到腾讯云物联网开发平台。
 
-* [腾讯云物联网开发平台（IoT Explorer）设备端 Python-SDK](explorer/README.md)
+* [腾讯云物联网开发平台（IoT Explorer）设备端 Python-SDK](explorer/)
 
 
 ## SDK涉及到的域名

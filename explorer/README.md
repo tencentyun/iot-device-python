@@ -18,7 +18,7 @@
 SDK支持pip安装，以及本地源码安装，详细接入步骤请参考 [SDK接入说明](doc/SDK接入说明.md)
 
 ## 下载IoT Explorer Python-SDK Demo示例代码
-下载[仓库](../)下完整代码，IoT Explorer Python-SDK Demo示例代码在 [explorer-device-python/explore](../explorer-device-python/explore) 目录下。
+下载[仓库](../../../)下完整代码，IoT Explorer Python-SDK Demo示例代码在 [iot-device-python/sample](../../../tree/master/sample) 目录下。
 
 ## 功能文档
 调用API接口可以参考以下对应功能示例Demo的使用。
