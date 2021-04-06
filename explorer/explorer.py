@@ -130,7 +130,6 @@ QVrcRBDxzx/G\n\
         self.__template_setup_state = False
         self.__is_subscribed_property_topic = False
         self.template_token_num = 0
-        self.__clientToken = None
 
         self.template_events_list = []
         self.template_action_list = []
@@ -881,6 +880,8 @@ QVrcRBDxzx/G\n\
             self.__handle_ota(payload)
         elif self.__topic_info.rrpc_topic_sub_prefix in topic:
             self.__handle_rrpc(topic, payload)
+        elif self.__topic_info.shadow_topic_sub in topic:
+            self.__user_on_message(topic, payload, qos, self.__user_data)
         else:
             rc = self.__handle_nonStandard_topic(topic, payload)
             if rc != 0:
@@ -2064,5 +2065,32 @@ QVrcRBDxzx/G\n\
         rc, mid = self.topic_publish(topic, reply, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            return -1, mid
+        return rc, mid
+
+    def shadow_init(self):
+        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
+            raise QcloudHub.StateError("current state is not connect")
+
+        shadow_topic_sub = self.__topic_info.shadow_topic_sub
+        sub_res, mid = self.topic_subscribe(shadow_topic_sub, 0)
+        if sub_res != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
+            return -1
+        return 0
+
+    def shadow_getdata(self):
+        topic_pub = self.__topic_info.shadow_topic_pub
+
+        client_token = "-" + str(self.template_token_num)
+        self.template_token_num += 1
+        # clientToken = self.__topic_info.control_clientToken
+        message = {
+            "type": "get",
+            "clientToken": client_token
+        }
+        rc, mid = self.topic_publish(topic_pub, message, 0)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             return -1, mid
         return rc, mid

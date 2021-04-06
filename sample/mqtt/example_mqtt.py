@@ -1,7 +1,7 @@
 import sys
 from explorer import explorer
 import logging
-
+import time
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -37,7 +37,7 @@ def example_mqtt():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=False)
+    te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=True)
     te.enable_logger(logging.DEBUG)
 
     te.user_on_connect = on_connect
@@ -48,11 +48,25 @@ def example_mqtt():
     te.user_on_unsubscribe = on_unsubscribe
 
 
-    te.mqtt_init(mqtt_domain="", useWebsocket=True)
+    te.mqtt_init(mqtt_domain="", useWebsocket=False)
     te.connect_async()
 
     return True
     '''
+    count = 0
+    while True:
+        if te.is_mqtt_connected():
+            break
+        else:
+            if count >= 3:
+                # sys.exit()
+                return True
+            time.sleep(1)
+            count += 1
+
+
+    te.shadow_init()
+
     while True:
         try:
             msg = input()
@@ -61,6 +75,8 @@ def example_mqtt():
         else:
             if msg == "1":
                 te.disconnect()
+            elif msg == "2":
+                te.shadow_getdata()
             else:
                 sys.exit()
     # '''
