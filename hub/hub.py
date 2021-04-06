@@ -305,6 +305,11 @@ class QcloudHub(object):
             # rrpc topic
             self.__rrpc_topic_pub_prefix = "$rrpc/txd/%s/%s/" % (product_id, device_name)
             self.__rrpc_topic_sub_prefix = "$rrpc/rxd/%s/%s/" % (product_id, device_name)
+
+            # shadow
+            self.__shadow_topic_pub = "$shadow/operation/%s/%s" % (product_id, device_name)
+            self.__shadow_topic_sub = "$shadow/operation/result/%s/%s" % (product_id, device_name)
+
             pass
 
         @property
@@ -374,6 +379,14 @@ class QcloudHub(object):
         @property
         def rrpc_topic_sub_prefix(self):
             return self.__rrpc_topic_sub_prefix
+
+        @property
+        def shadow_topic_pub(self):
+            return self.__shadow_topic_pub
+
+        @property
+        def shadow_topic_sub(self):
+            return self.__shadow_topic_sub
 
         @property
         def control_clientToken(self):

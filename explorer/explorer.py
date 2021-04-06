@@ -2066,3 +2066,28 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return -1, mid
         return rc, mid
+
+    def shadow_init(self):
+        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
+            raise QcloudHub.StateError("current state is not connect")
+
+        shadow_topic_sub = self.__topic_info.shadow_topic_sub
+        sub_res, mid = self.topic_subscribe(shadow_topic_sub, 0)
+        if sub_res != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
+            return -1
+        return 0
+
+    def shadow_getdata(self):
+        topic_pub = self.__topic_info.shadow_topic_pub
+
+        clientToken = self.__topic_info.control_clientToken
+        message = {
+            "type": "get",
+            "clientToken": clientToken
+        }
+        rc, mid = self.topic_publish(topic_pub, message, 0)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
+            return -1, mid
+        return rc, mid
