@@ -66,6 +66,7 @@ def example_mqtt():
 
 
     te.shadow_init()
+    te.broadcast_init()
 
     while True:
         try:

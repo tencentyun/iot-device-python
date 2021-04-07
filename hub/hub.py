@@ -312,6 +312,8 @@ class QcloudHub(object):
             self.__shadow_topic_pub = "$shadow/operation/%s/%s" % (product_id, device_name)
             self.__shadow_topic_sub = "$shadow/operation/result/%s/%s" % (product_id, device_name)
 
+            # broadcast
+            self.__broadcast_topic_sub = "$broadcast/rxd/%s/%s" % (product_id, device_name)
             pass
 
         @property
@@ -389,6 +391,10 @@ class QcloudHub(object):
         @property
         def shadow_topic_sub(self):
             return self.__shadow_topic_sub
+
+        @property
+        def broadcast_topic_sub(self):
+            return self.__broadcast_topic_sub
 
         @property
         def control_clientToken(self):

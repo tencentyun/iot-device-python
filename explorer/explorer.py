@@ -882,6 +882,8 @@ QVrcRBDxzx/G\n\
             self.__handle_rrpc(topic, payload)
         elif self.__topic_info.shadow_topic_sub in topic:
             self.__user_on_message(topic, payload, qos, self.__user_data)
+        elif self.__topic_info.broadcast_topic_sub in topic:
+            self.__user_on_message(topic, payload, qos, self.__user_data)
         else:
             rc = self.__handle_nonStandard_topic(topic, payload)
             if rc != 0:
@@ -2094,3 +2096,14 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             return -1, mid
         return rc, mid
+
+    def broadcast_init(self):
+        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
+            raise QcloudHub.StateError("current state is not connect")
+
+        broadcast_topic_sub = self.__topic_info.broadcast_topic_sub
+        sub_res, mid = self.topic_subscribe(broadcast_topic_sub, 0)
+        if sub_res != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
+            return -1
+        return 0
