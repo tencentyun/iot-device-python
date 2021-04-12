@@ -82,7 +82,9 @@ def example_gateway():
     logging.basicConfig(format=__log_format)
 
     te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-    te.enable_logger(logging.DEBUG)
+    te.enableLogger(logging.DEBUG)
+
+    print("\033[1;36m gateway test start...\033[0m")
 
     te.user_on_connect = on_connect
     te.user_on_disconnect = on_disconnect
@@ -90,22 +92,23 @@ def example_gateway():
     te.user_on_publish = on_publish
     te.user_on_subscribe = on_subscribe
     te.user_on_unsubscribe = on_unsubscribe
-    te.mqtt_init(mqtt_domain="")
-    te.connect_async()
+    te.mqttInit(mqtt_domain="")
+    te.connect()
 
     count = 0
     while True:
-        if te.is_mqtt_connected():
+        if te.isMqttConnected():
             break
         else:
             if count >= 3:
                 # sys.exit()
-                return True
+                print("\033[1;31m gateway test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
 
-    te.gateway_init()
+    te.gatewayInit()
 
     # 获取到子设备信息后,在此维护设备状态,sdk中不处理设备状态
     subdev_list = te.gateway_subdev_list
@@ -119,7 +122,7 @@ def example_gateway():
             if msg == "1":
                 for subdev in subdev_list:
                     if subdev.session_status is not te.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
-                        rc = te.gateway_subdev_online_offline("online", subdev.sub_productId, subdev.sub_devName)
+                        rc = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
                             subdev.session_status = te.SessionState.SUBDEV_SEESION_STATUS_ONLINE
                             print("online success")
@@ -129,7 +132,7 @@ def example_gateway():
             elif msg == "2":
                 for subdev in subdev_list:
                     if subdev.session_status == te.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
-                        rc = te.gateway_subdev_online_offline("offline", subdev.sub_productId, subdev.sub_devName)
+                        rc = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
                             subdev.session_status = te.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
                             print("offline success")
@@ -137,14 +140,14 @@ def example_gateway():
                             print("offline fail")
 
             elif msg == "3":
-                rc = te.gateway_subdev_bind_unbind("bind", "Z53CXC198M", "dev2", "dev_secret")
+                rc = te.gatewaySubdevBind("YOUR_PRODUCT_ID", "YOUR_DEVICE_NAME", "YOUR_DEVICE_SECRET")
                 if rc == 0:
                     print("bind success")
                 else:
                     print("bind fail")
 
             elif msg == "4":
-                rc = te.gateway_subdev_bind_unbind("unbind", "Z53CXC198M", "dev2", None)
+                rc = te.gatewaySubdevUnbind("YOUR_PRODUCT_ID", "YOUR_DEVICE_NAME", None)
                 if rc == 0:
                     print("unbind success")
                 else:
@@ -207,4 +210,5 @@ def example_gateway():
 
             else:
                 sys.exit()
+    print("\033[1;36m gateway test success...\033[0m")
     return True
