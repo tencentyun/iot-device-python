@@ -8,7 +8,7 @@ __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)
 logging.basicConfig(format=__log_format)
 
 te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-te.enable_logger(logging.DEBUG)
+te.enableLogger(logging.DEBUG)
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -109,8 +109,8 @@ def example_template():
 
 
     te.template_setup("sample/template/template_config.json")
-    te.mqtt_init(mqtt_domain="")
-    te.connect_async()
+    te.mqttInit(mqtt_domain="")
+    te.connect()
 
     count = 0
     while True:

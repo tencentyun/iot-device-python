@@ -10,7 +10,7 @@ def example_dynreg():
     logging.basicConfig(format=__log_format)
 
     dyn_explorer = explorer.QcloudExplorer('sample/device_info.json')
-    dyn_explorer.enable_logger(logging.DEBUG)
+    dyn_explorer.enableLogger(logging.DEBUG)
     ret, msg = dyn_explorer.dynreg_device()
 
     if ret == 0:
