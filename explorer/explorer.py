@@ -174,6 +174,9 @@ QVrcRBDxzx/G\n\
         self.__user_on_rrpc_message = None
         self.__process_id = None
 
+        # shadow
+        self._shadow_token_num = 0
+
         # construct thread handle
         self.__loop_thread = QcloudHub.LoopThread(self.__explorer_log)
         self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
@@ -299,7 +302,7 @@ QVrcRBDxzx/G\n\
 
         pass
 
-    def enable_logger(self, level):
+    def enableLogger(self, level):
         self.__explorer_log.set_level(level)
         self.__explorer_log.enable_logger()
         if self.__mqtt_client is not None:
@@ -336,7 +339,7 @@ QVrcRBDxzx/G\n\
         self.__mqtt_command_timeout = 5
         pass
 
-    def dynreg_device(self, timeout=10):
+    def dynregDevice(self, timeout=10):
         """
         dynamic device to tencent cloud
         :param timeout: http/https timeout
@@ -384,7 +387,7 @@ QVrcRBDxzx/G\n\
             if reply_obj['code'] == 0:
                 reply_obj_data = reply_obj["payload"]
                 if reply_obj_data is not None:
-                    psk = self._AESUtil.decrypt(reply_obj_data, product_secret[:self._AESUtil.BLOCK_SIZE_16],
+                    psk = QcloudHub._AESUtil.decrypt(reply_obj_data, product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16],
                                                 '0000000000000000')
                     psk = str(psk, encoding='utf-8')[:reply_obj['len']]
                     user_dict = json.loads(psk)
@@ -481,7 +484,7 @@ QVrcRBDxzx/G\n\
                     "method": "clear_control",
                     "clientToken": clientToken
                 }
-                rc, mid = self.topic_publish(topic_pub, message, 0)
+                rc, mid = self.publish(topic_pub, message, 0)
                 # should deal mid
                 self.__explorer_log.debug("mid:%d" % mid)
                 if rc != 0:
@@ -533,13 +536,13 @@ QVrcRBDxzx/G\n\
     def __handle_rrpc(self, topic, payload):
         rc = self.__rrpc_get_process_id(topic)
         if rc < 0:
-            raise QcloudExplorer.StateError("cannot found process id")
+            raise QcloudHub.StateError("cannot found process id")
 
         # 调用用户注册的回调
         if self.__user_on_rrpc_message is not None:
             self.__user_on_rrpc_message(payload, self.__user_data)
 
-    def topic_subscribe(self, topic, qos):
+    def subscribe(self, topic, qos):
         self.__explorer_log.debug("sub topic:%s,qos:%d" % (topic, qos))
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
@@ -577,7 +580,7 @@ QVrcRBDxzx/G\n\
                 return 1, mid
         pass
 
-    def topic_unsubscribe(self, topic):
+    def unsubscribe(self, topic):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
         unsubscribe_topics = []
@@ -597,7 +600,7 @@ QVrcRBDxzx/G\n\
                 return 1, None
         pass
 
-    def topic_publish(self, topic, payload, qos):
+    def publish(self, topic, payload, qos):
         self.__explorer_log.debug("pub topic:%s,payload:%s,qos:%d" % (topic, payload, qos))
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
@@ -614,14 +617,17 @@ QVrcRBDxzx/G\n\
             return 1, None
         pass
 
-    def is_mqtt_connected(self):
+    def isMqttConnected(self):
         if self.__explorer_state is QcloudHub.HubState.CONNECTED:
             return True
         else:
             return False
 
-    def mqtt_init(self, mqtt_domain, useWebsocket=False):
-        self.__explorer_log.debug("mqtt_init")
+    def getConnectStatus(self):
+        return self.__explorer_state
+
+    def mqttInit(self, mqtt_domain, useWebsocket=False):
+        self.__explorer_log.debug("mqttInit")
         timestamp = str(int(round(time.time() * 1000)))
 
         device_name = self.__device_file.device_name
@@ -690,7 +696,7 @@ QVrcRBDxzx/G\n\
         self.__mqtt_client.max_inflight_messages_set(self.__mqtt_max_inflight_message)
 
     # start thread to connect and loop
-    def connect_async(self):
+    def connect(self):
         if self.__explorer_state not in (QcloudHub.HubState.INITIALIZED,
                                          QcloudHub.HubState.DISCONNECTED):
             raise QcloudHub.StateError("current state is not in INITIALIZED or DISCONNECTED")
@@ -727,7 +733,7 @@ QVrcRBDxzx/G\n\
             sys_topic_sub = self.__topic_info.sys_topic_sub
             sys_topic_pub = self.__topic_info.sys_topic_pub
             qos = 0
-            sub_res, mid = self.topic_subscribe(sys_topic_sub, qos)
+            sub_res, mid = self.subscribe(sys_topic_sub, qos)
             # should deal mid
             self.__explorer_log.debug("mid:%d" % mid)
             if sub_res == 0:
@@ -737,9 +743,9 @@ QVrcRBDxzx/G\n\
                         "time"
                     ],
                 }
-                self.topic_publish(sys_topic_pub, payload, qos)
+                self.publish(sys_topic_pub, payload, qos)
             else:
-                self.__explorer_log.error("__topic_subscibe error:rc:%d" % (sub_res))
+                self.__explorer_log.error("topic_subscribe error:rc:%d" % (sub_res))
         pass
 
     def __on_disconnect(self, client, user_data, rc):
@@ -1026,7 +1032,7 @@ QVrcRBDxzx/G\n\
 
         return 0, info_out
 
-    def template_setup(self, config_file=None):
+    def templateSetup(self, config_file=None):
         """
         if self.__explorer_state is not QcloudExplorer.HubState.INITIALIZED:
             raise QcloudExplorer.StateError("current state is not INITIALIZED")
@@ -1176,7 +1182,7 @@ QVrcRBDxzx/G\n\
         return 0
 
     # 暂定传入json格式
-    def template_event_post(self, message):
+    def templateEventPost(self, message):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
         if message is None or len(message) == 0:
@@ -1192,7 +1198,7 @@ QVrcRBDxzx/G\n\
         }
 
         template_topic_pub = self.__topic_info.template_event_topic_pub
-        rc, mid = self.topic_publish(template_topic_pub, json_out, 1)
+        rc, mid = self.publish(template_topic_pub, json_out, 1)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
@@ -1203,11 +1209,11 @@ QVrcRBDxzx/G\n\
 
     def __template_event_init(self):
         template_topic_sub = self.__topic_info.template_event_topic_sub
-        sub_res, mid = self.topic_subscribe(template_topic_sub, 0)
+        sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
@@ -1215,11 +1221,11 @@ QVrcRBDxzx/G\n\
 
     def __template_action_init(self):
         template_topic_sub = self.__topic_info.template_action_topic_sub
-        sub_res, mid = self.topic_subscribe(template_topic_sub, 0)
+        sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
@@ -1227,7 +1233,7 @@ QVrcRBDxzx/G\n\
 
     # 暂定传入的message为json格式(json/属性列表?)
     # 传入json格式时该函数应改为内部函数,由template_report()调用
-    def template_json_construct_report_array(self, payload):
+    def templateJsonConstructReportArray(self, payload):
         if payload is None or len(payload) == 0:
             raise ValueError('Invalid payload.')
 
@@ -1241,7 +1247,7 @@ QVrcRBDxzx/G\n\
 
         return json_out
 
-    def template_report_sys_info(self, sysinfo):
+    def templateReportSysInfo(self, sysinfo):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
         if sysinfo is None or len(sysinfo) == 0:
@@ -1252,7 +1258,7 @@ QVrcRBDxzx/G\n\
         if rc != 0:
             self.__explorer_log.error("__json_construct_sysinfo error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 1
-        rc, mid = self.topic_publish(template_topic_pub, json_out, 0)
+        rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
@@ -1260,13 +1266,13 @@ QVrcRBDxzx/G\n\
             return 2
         return 0
 
-    def template_control_reply(self, replyPara):
+    def templateControlReply(self, replyPara):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
         template_topic_pub = self.__topic_info.template_property_topic_pub
         json_out = self.__build_control_reply(replyPara)
-        rc, mid = self.topic_publish(template_topic_pub, json_out, 0)
+        rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
@@ -1276,13 +1282,13 @@ QVrcRBDxzx/G\n\
             return 0
         pass
 
-    def template_action_reply(self, clientToken, response, replyPara):
+    def templateActionReply(self, clientToken, response, replyPara):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
         template_topic_pub = self.__topic_info.template_action_topic_pub
         json_out = self.__build_action_reply(clientToken, response, replyPara)
-        rc, mid = self.topic_publish(template_topic_pub, json_out, 0)
+        rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
@@ -1293,14 +1299,14 @@ QVrcRBDxzx/G\n\
         pass
 
     # 回调中处理IOT_Template_ClearControl
-    def template_get_status(self):
+    def templateGetStatus(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
         template_topic_pub = self.__topic_info.template_property_topic_pub
 
         token = self.__build_empty_json(self.__device_file.product_id, "get_status")
-        rc, mid = self.topic_publish(template_topic_pub, token, 0)
+        rc, mid = self.publish(template_topic_pub, token, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
@@ -1310,7 +1316,7 @@ QVrcRBDxzx/G\n\
             return 0
         pass
 
-    def template_report(self, message):
+    def templateReport(self, message):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
         if message is None or len(message) == 0:
@@ -1318,17 +1324,17 @@ QVrcRBDxzx/G\n\
         # 判断下行topic是否订阅
         if self.__is_subscribed_property_topic is False:
             template_topic_sub = self.__topic_info.template_property_topic_sub
-            sub_res, mid = self.topic_subscribe(template_topic_sub, 0)
+            sub_res, mid = self.subscribe(template_topic_sub, 0)
             # should deal mid
             self.__explorer_log.debug("mid:%d" % mid)
             if sub_res != 0:
-                self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+                self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
                 return 1
             self.__is_subscribed_property_topic = True
             pass
 
         template_topic_pub = self.__topic_info.template_property_topic_pub
-        rc, mid = self.topic_publish(template_topic_pub, message, 0)
+        rc, mid = self.publish(template_topic_pub, message, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
@@ -1336,16 +1342,16 @@ QVrcRBDxzx/G\n\
             return 0
         pass
 
-    def template_init(self):
+    def templateInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
         template_topic_sub = self.__topic_info.template_property_topic_sub
-        sub_res, mid = self.topic_subscribe(template_topic_sub, 0)
+        sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
         self.__is_subscribed_property_topic = True
@@ -1357,7 +1363,7 @@ QVrcRBDxzx/G\n\
             return 1
         return 0
 
-    def clear_control(self):
+    def clearControl(self):
         topic_pub = self.__topic_info.template_property_topic_pub
         clientToken = self.__topic_info.control_clientToken
 
@@ -1366,43 +1372,43 @@ QVrcRBDxzx/G\n\
             "method": "clear_control",
             "clientToken": clientToken
         }
-        rc, mid = self.topic_publish(topic_pub, message, 0)
+        rc, mid = self.publish(topic_pub, message, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
         pass
 
-    def template_deinit(self):
+    def templateDeinit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
 
         template_topic_sub = self.__topic_info.template_property_topic_sub
-        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
         self.__is_subscribed_property_topic = False
 
         
         template_topic_sub = self.__topic_info.template_event_topic_sub
-        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
         template_topic_sub = self.__topic_info.template_action_topic_sub
-        sub_res, mid = self.topic_unsubscribe(template_topic_sub)
+        sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
@@ -1411,25 +1417,25 @@ QVrcRBDxzx/G\n\
 
     # gateway
     # 网关子设备数据模板回调注册
-    def register_user_property_callback(self, product_id, callback):
+    def registerUserPropertyCallback(self, product_id, callback):
         with self.__register_property_cb_lock:
             self.__on_gateway_subdev_prop_cb_dict[product_id] = callback
 
-    def register_user_action_callback(self, product_id, callback):
+    def registerUserActionCallback(self, product_id, callback):
         with self.__register_action_cb_lock:
             self.__on_gateway_subdev_action_cb_dict[product_id] = callback
 
-    def register_user_event_callback(self, product_id, callback):
+    def registerUserEventCallback(self, product_id, callback):
         with self.__register_event_cb_lock:
             self.__on_gateway_subdev_event_cb_dict[product_id] = callback
 
-    def gateway_subdev_template_subscribe(self, product_id, topic_prop, topic_action, topic_event):
+    def gatewaySubdevSubscribe(self, product_id, topic_prop, topic_action, topic_event):
         # 网关子设备数据模板
-        sub_res, mid = self.topic_subscribe(topic_prop, 0)
+        sub_res, mid = self.subscribe(topic_prop, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, topic_prop))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_prop))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1438,11 +1444,11 @@ QVrcRBDxzx/G\n\
                     tup = (product_id, topic)
                     self.__gateway_subdev_property_topic_list.append(tup)
 
-        sub_res, mid = self.topic_subscribe(topic_action, 0)
+        sub_res, mid = self.subscribe(topic_action, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, topic_action))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_action))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1451,11 +1457,11 @@ QVrcRBDxzx/G\n\
                     tup = (product_id, topic)
                     self.__gateway_subdev_action_topic_list.append(tup)
 
-        sub_res, mid = self.topic_subscribe(topic_event, 0)
+        sub_res, mid = self.subscribe(topic_event, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, topic_event))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_event))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1574,7 +1580,7 @@ QVrcRBDxzx/G\n\
 
         return payload
 
-    def gateway_init(self):
+    def gatewayInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
@@ -1594,15 +1600,15 @@ QVrcRBDxzx/G\n\
             index += 1
 
         gateway_topic_sub = self.__topic_info.gateway_topic_sub
-        sub_res, mid = self.topic_subscribe(gateway_topic_sub, 0)
+        sub_res, mid = self.subscribe(gateway_topic_sub, 0)
         # should deal mid
         self.__explorer_log.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, gateway_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, gateway_topic_sub))
             return 1
         return 0
 
-    def gateway_subdev_online_offline(self, ptype, sub_productId, sub_devName):
+    def gatewaySubdevOnline(self, sub_productId, sub_devName):
         if sub_productId is None or len(sub_productId) == 0:
             raise ValueError('Invalid sub_productId.')
         if sub_devName is None or len(sub_devName) == 0:
@@ -1613,83 +1619,102 @@ QVrcRBDxzx/G\n\
         client_id = sub_productId + "/" + sub_devName
 
         gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload(ptype, sub_productId, sub_devName, None)
+        payload = self.__build_session_payload("online", sub_productId, sub_devName, None)
 
-        rc, mid = self.topic_publish(gateway_topic_pub, payload, 0)
+        rc, mid = self.publish(gateway_topic_pub, payload, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
             return 2
 
-        rc = self.__wait_for_session_reply(client_id, ptype)
+        rc = self.__wait_for_session_reply(client_id, "online")
         if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, ptype))
+            self.__explorer_log.debug("client:%s %s success" % (client_id, "online"))
         else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, ptype))
+            self.__explorer_log.debug("client:%s %s fail" % (client_id, "online"))
 
         return rc
 
-    def gateway_subdev_bind_unbind(self, ptype, sub_productId, sub_devName, sub_secret):
+    def gatewaySubdevOffline(self, sub_productId, sub_devName):
         if sub_productId is None or len(sub_productId) == 0:
             raise ValueError('Invalid sub_productId.')
         if sub_devName is None or len(sub_devName) == 0:
             raise ValueError('Invalid sub_devName.')
 
-        if ptype == "bind":
-            if sub_secret is None or len(sub_secret) == 0:
-                raise ValueError('Invalid sub_secret.')
-
+        # 保存当前会话的设备client_id
+        # self.__gateway_session_client_id = sub_productId + "/" + sub_devName
         client_id = sub_productId + "/" + sub_devName
 
         gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload(ptype, sub_productId, sub_devName, sub_secret)
+        payload = self.__build_session_payload("offline", sub_productId, sub_devName, None)
 
-        rc, mid = self.topic_publish(gateway_topic_pub, payload, 0)
+        rc, mid = self.publish(gateway_topic_pub, payload, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
             return 2
 
-        rc = self.__wait_for_session_reply(client_id, ptype)
+        rc = self.__wait_for_session_reply(client_id, "offline")
         if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, ptype))
+            self.__explorer_log.debug("client:%s %s success" % (client_id, "offline"))
         else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, ptype))
+            self.__explorer_log.debug("client:%s %s fail" % (client_id, "offline"))
 
         return rc
 
-    def gateway_subscribe(self, topic):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+    def gatewayBindSubdev(self, sub_productId, sub_devName, sub_secret):
+        if sub_productId is None or len(sub_productId) == 0:
+            raise ValueError('Invalid sub_productId.')
+        if sub_devName is None or len(sub_devName) == 0:
+            raise ValueError('Invalid sub_devName.')
 
-        if topic is None or len(topic) == 0:
-            raise ValueError('Invalid topic.')
+        if sub_secret is None or len(sub_secret) == 0:
+            raise ValueError('Invalid sub_secret.')
 
-        sub_res, mid = self.topic_subscribe(topic, 0)
-        # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__explorer_log.error("__topic_subscibe error:rc:%d,topic:%s" % (sub_res, topic))
-            return 1
-        return 0
+        client_id = sub_productId + "/" + sub_devName
 
-    def gateway_publish(self, topic, message):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        gateway_topic_pub = self.__topic_info.gateway_topic_pub
+        payload = self.__build_session_payload("bind", sub_productId, sub_devName, sub_secret)
 
-        if topic is None or len(topic) == 0:
-            raise ValueError('Invalid topic.')
-        if message is None or len(message) == 0:
-            raise ValueError('Invalid message.')
-
-        rc, mid = self.topic_publish(topic, message, 0)
+        rc, mid = self.publish(gateway_topic_pub, payload, 0)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
             return 2
-        return 0
+
+        rc = self.__wait_for_session_reply(client_id, "bind")
+        if rc == 0:
+            self.__explorer_log.debug("client:%s %s success" % (client_id, "bind"))
+        else:
+            self.__explorer_log.debug("client:%s %s fail" % (client_id, "bind"))
+
+        return rc
+    
+    def gatewayUnbindSubdev(self, sub_productId, sub_devName, sub_secret):
+        if sub_productId is None or len(sub_productId) == 0:
+            raise ValueError('Invalid sub_productId.')
+        if sub_devName is None or len(sub_devName) == 0:
+            raise ValueError('Invalid sub_devName.')
+
+        client_id = sub_productId + "/" + sub_devName
+
+        gateway_topic_pub = self.__topic_info.gateway_topic_pub
+        payload = self.__build_session_payload("unbind", sub_productId, sub_devName, None)
+
+        rc, mid = self.publish(gateway_topic_pub, payload, 0)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
+            return 2
+
+        rc = self.__wait_for_session_reply(client_id, "unbind")
+        if rc == 0:
+            self.__explorer_log.debug("client:%s %s success" % (client_id, "unbind"))
+        else:
+            self.__explorer_log.debug("client:%s %s fail" % (client_id, "unbind"))
+
+        return rc
 
     # ota
     def __ota_publish(self, message, qos):
         topic = self.__topic_info.ota_report_topic_pub
-        rc, mid = self.topic_publish(topic, message, qos)
+        rc, mid = self.publish(topic, message, qos)
         return rc, mid
 
     def __ota_info_get(self, payload):
@@ -1717,7 +1742,7 @@ QVrcRBDxzx/G\n\
 
         self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_FETCHING
 
-    def ota_init(self):
+    def otaInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
@@ -1725,9 +1750,9 @@ QVrcRBDxzx/G\n\
         self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_UNINITED
 
         ota_topic_sub = self.__topic_info.ota_update_topic_sub
-        sub_res, mid = self.topic_subscribe(ota_topic_sub, 1)
+        sub_res, mid = self.subscribe(ota_topic_sub, 1)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, ota_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, ota_topic_sub))
             return 1
 
         cnt = 0
@@ -1749,10 +1774,10 @@ QVrcRBDxzx/G\n\
         return 0
 
     # 是否应将ota句柄传入(支持多个下载进程?)
-    def ota_is_fetching(self):
+    def otaIsFetching(self):
         return (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_FETCHING)
 
-    def ota_is_fetch_finished(self):
+    def otaIsFetchFinished(self):
         return (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_FETCHED)
 
     def __message_splice(self, state, progress, result_code, result_msg, version, ptype):
@@ -1808,7 +1833,7 @@ QVrcRBDxzx/G\n\
 
         return message
 
-    def ota_report_upgrade_result(self, version, report_type):
+    def _ota_report_upgrade_result(self, version, report_type):
         if self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED:
             raise ValueError('ota handle is uninitialized')
         message = self.__ota_gen_report_msg(version, 1, report_type)
@@ -1818,7 +1843,7 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("message is none")
             return 1, -1
 
-    def ota_report_progress(self, progress, version, report_type):
+    def _ota_report_progress(self, progress, version, report_type):
         if self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED:
             raise ValueError('ota handle is uninitialized')
         message = self.__ota_gen_report_msg(version, progress, report_type)
@@ -1828,29 +1853,29 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("message is none")
             return 3
 
-    def ota_report_upgrade_success(self, version):
+    def otaReportUpgradeSuccess(self, version):
         if version is None:
-            rc, mid = self.ota_report_upgrade_result(self.__ota_manager.version,
+            rc, mid = self._ota_report_upgrade_result(self.__ota_manager.version,
                                                      QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
         else:
-            rc, mid = self.ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
+            rc, mid = self._ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
         if rc != 0:
             self.__explorer_log.error("ota_report_upgrade_success fail")
             return -1
         return mid
 
-    def ota_report_upgrade_fail(self, version):
+    def otaReportUpgradeFail(self, version):
         if version is None:
-            rc, mid = self.ota_report_upgrade_result(self.__ota_manager.version,
+            rc, mid = self._ota_report_upgrade_result(self.__ota_manager.version,
                                                      QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
         else:
-            rc, mid = self.ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
+            rc, mid = self._ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
         if rc != 0:
             self.__explorer_log.error("ota_report_upgrade_success fail")
             return -1
         return mid
 
-    def ota_ioctl_number(self, cmd_type):
+    def otaIoctlNumber(self, cmd_type):
         if ((self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_INITED)
                 or (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED)):
             return -1, "state error"
@@ -1866,14 +1891,14 @@ QVrcRBDxzx/G\n\
             if md5sum == self.__ota_manager.md5sum:
                 return 0, "success"
             else:
-                self.ota_report_upgrade_result(self.__ota_manager.version,
+                self._ota_report_upgrade_result(self.__ota_manager.version,
                                                QcloudHub.OtaReportType.IOT_OTAR_MD5_NOT_MATCH)
                 return -1, "md5 error"
             pass
 
         return -1, "cmd type error"
 
-    def ota_ioctl_string(self, cmd_type, length):
+    def otaIoctlString(self, cmd_type, length):
         if ((self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_INITED)
                 or (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED)):
             return "nll", "state error"
@@ -1891,11 +1916,11 @@ QVrcRBDxzx/G\n\
 
         return "null", "cmd type error"
 
-    def ota_reset_md5(self):
+    def otaResetMd5(self):
         self.__ota_manager.md5 = None
         self.__ota_manager.md5 = hashlib.md5()
 
-    def ota_md5_update(self, buf):
+    def otaMd5Update(self, buf):
         if buf is None:
             self.__explorer_log.error("buf is none")
             return -1
@@ -1909,7 +1934,7 @@ QVrcRBDxzx/G\n\
     def __ota_http_deinit(self, http):
         print("__ota_http_deinit do nothing")
 
-    def http_init(self, host, url, offset, size, timeout_sec):
+    def httpInit(self, host, url, offset, size, timeout_sec):
         range_format = "bytes=%d-%d"
         srange = range_format % (offset, size)
 
@@ -1949,7 +1974,7 @@ QVrcRBDxzx/G\n\
                 return 1
         return 0
 
-    def http_fetch(self, buf_len):
+    def httpFetch(self, buf_len):
         if self.http_manager.handle is None:
             return None, -1
         try:
@@ -1959,7 +1984,7 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("http read error:%s" % str(e))
             return None, -2
 
-    def ota_report_version(self, version):
+    def otaReportVersion(self, version):
         if version is None or len(version) == 0:
             raise ValueError('Invalid version.')
         if len(version) < self.__ota_version_len_min or len(version) > self.__ota_version_len_max:
@@ -1978,25 +2003,25 @@ QVrcRBDxzx/G\n\
             return 1, mid
         return 0, mid
 
-    def ota_download_start(self, offset, size):
+    def otaDownloadStart(self, offset, size):
         if offset < 0 or size <= 0:
             raise ValueError('Invalid length.')
         if offset == 0:
-            self.ota_reset_md5()
+            self.otaResetMd5()
         self.__ota_http_deinit(self.__ota_manager.http_manager)
         # 断点续传初始值不为0
         self.__ota_manager.size_fetched += offset
 
-        rc = self.http_init(self.__ota_manager.host, self.__ota_manager.purl, offset, size, 10000 / 1000)
+        rc = self.httpInit(self.__ota_manager.host, self.__ota_manager.purl, offset, size, 10000 / 1000)
         if rc != 0:
             if self.http_manager.err_code == 403:
-                self.ota_report_upgrade_result(self.__ota_manager.version,
+                self._ota_report_upgrade_result(self.__ota_manager.version,
                                                QcloudHub.OtaReportType.IOT_OTAR_AUTH_FAIL)
             elif self.http_manager.err_code == 404:
-                self.ota_report_upgrade_result(self.__ota_manager.version,
+                self._ota_report_upgrade_result(self.__ota_manager.version,
                                                QcloudHub.OtaReportType.IOT_OTAR_FILE_NOT_EXIST)
             elif self.http_manager.err_code == 408:
-                self.ota_report_upgrade_result(self.__ota_manager.version,
+                self._ota_report_upgrade_result(self.__ota_manager.version,
                                                QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
             else:
                 # 其他错误判断(error.reason)
@@ -2004,20 +2029,20 @@ QVrcRBDxzx/G\n\
 
         return rc
 
-    def ota_fetch_yield(self, buf_len):
+    def otaFetchYield(self, buf_len):
         if self.__ota_manager.state != QcloudHub.OtaState.IOT_OTAS_FETCHING:
             self.__explorer_log.error("ota state is not fetching")
             return None, -1
         # http read
-        buf, rv_len = self.http_fetch(buf_len)
+        buf, rv_len = self.httpFetch(buf_len)
         if rv_len < 0:
             if rv_len == -2:
-                self.ota_report_upgrade_result(self.__ota_manager.version,
+                self._ota_report_upgrade_result(self.__ota_manager.version,
                                                QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
             return None, -2
         else:
             if self.__ota_manager.size_fetched == 0:
-                self.ota_report_progress(QcloudHub.OtaProgressCode.IOT_OTAP_FETCH_PERCENTAGE_MIN,
+                self._ota_report_progress(QcloudHub.OtaProgressCode.IOT_OTAP_FETCH_PERCENTAGE_MIN,
                                          self.__ota_manager.version,
                                          QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_BEGIN)
                 self.__ota_manager.report_timestamp = int(time.time())
@@ -2027,7 +2052,7 @@ QVrcRBDxzx/G\n\
 
         percent = int((self.__ota_manager.size_fetched * 100) / self.__ota_manager.file_size)
         if percent == 100:
-            self.ota_report_progress(percent, self.__ota_manager.version,
+            self._ota_report_progress(percent, self.__ota_manager.version,
                                      QcloudHub.OtaReportType.IOT_OTAR_DOWNLOADING)
         else:
             timestamp = int(time.time())
@@ -2035,7 +2060,7 @@ QVrcRBDxzx/G\n\
             if (((timestamp - self.__ota_manager.report_timestamp) >= 1)
                     and (self.__ota_manager.size_last_fetched > 0)):
                 self.__ota_manager.report_timestamp = timestamp
-                self.ota_report_progress(percent, self.__ota_manager.version,
+                self._ota_report_progress(percent, self.__ota_manager.version,
                                          QcloudHub.OtaReportType.IOT_OTAR_DOWNLOADING)
 
         if self.__ota_manager.size_fetched >= self.__ota_manager.file_size:
@@ -2046,64 +2071,114 @@ QVrcRBDxzx/G\n\
         return buf, rv_len
 
 
-    def rrpc_init(self):
+    def rrpcInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not CONNECTED")
 
         rrpc_topic_sub = self.__topic_info.rrpc_topic_sub_prefix + "+"
-        sub_res, mid = self.topic_subscribe(rrpc_topic_sub, 0)
+        sub_res, mid = self.subscribe(rrpc_topic_sub, 0)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscibe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
             return 1
         # 判断订阅是否成功(qos0)
         return 0
 
-    def rrpc_reply(self, reply, length):
+    def rrpcReply(self, reply, length):
         if reply is None or length == 0:
             raise ValueError('Invalid length.')
         if self.__process_id is None:
             raise ValueError('no process id')
         topic = self.__topic_info.rrpc_topic_pub_prefix + self.__process_id
-        rc, mid = self.topic_publish(topic, reply, 0)
+        rc, mid = self.publish(topic, reply, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return -1, mid
         return rc, mid
 
-    def shadow_init(self):
+    def shadowInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not connect")
 
         shadow_topic_sub = self.__topic_info.shadow_topic_sub
-        sub_res, mid = self.topic_subscribe(shadow_topic_sub, 0)
+        sub_res, mid = self.subscribe(shadow_topic_sub, 0)
         if sub_res != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
             return -1
         return 0
 
-    def shadow_getdata(self):
+    def getShadow(self):
         topic_pub = self.__topic_info.shadow_topic_pub
 
-        client_token = "-" + str(self.template_token_num)
-        self.template_token_num += 1
-        # clientToken = self.__topic_info.control_clientToken
+        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
+        self._shadow_token_num += 1
+
         message = {
             "type": "get",
             "clientToken": client_token
         }
-        rc, mid = self.topic_publish(topic_pub, message, 0)
+        rc, mid = self.publish(topic_pub, message, 0)
         if rc != 0:
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             return -1, mid
         return rc, mid
+    
+    def shadowJsonConstructDesireNull(self):
+        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
+        self._shadow_token_num += 1
+        json_out = {
+            "type": "update",
+            "state": {
+                "desired": None
+            },
+            "clientToken": client_token
+        }
+        return json_out
 
-    def broadcast_init(self):
+    def shadowUpdate(self, shadow_docs, length):
+        if shadow_docs is None or length == 0:
+            raise ValueError('Invalid length.')
+        topic = self.__topic_info.shadow_topic_pub
+        rc, mid = self.publish(topic, shadow_docs, 0)
+        if rc != 0:
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            return -1, mid
+        return rc, mid
+    
+    def shadowJsonConstructReport(self, *args):
+        format_string = '"%s":"%s"'
+        format_int = '"%s":%d'
+        report_string = '{"type": "update", "state": {"reported": {'
+        arg_cnt = 0
+
+        for arg in args:
+            arg_cnt += 1
+            if arg.type == "int" or arg.type == "float":
+                report_string += format_int % (arg.key, arg.data)
+            elif arg.type == "string":
+                report_string += format_string % (arg.key, arg.data)
+            else:
+                self.__explorer_log.error("type not support")
+                arg.data = " "
+            if arg_cnt < len(args):
+                report_string += ","
+        pass
+        report_string += '}}, "clientToken": "%s"}'
+
+        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
+        self._shadow_token_num += 1
+
+        report_out = report_string % (client_token)
+        json_out = json.loads(report_out)
+
+        return json_out
+
+    def broadcastInit(self):
         if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
             raise QcloudHub.StateError("current state is not connect")
 
         broadcast_topic_sub = self.__topic_info.broadcast_topic_sub
-        sub_res, mid = self.topic_subscribe(broadcast_topic_sub, 0)
+        sub_res, mid = self.subscribe(broadcast_topic_sub, 0)
         if sub_res != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
+            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, broadcast_topic_sub))
             return -1
         return 0
