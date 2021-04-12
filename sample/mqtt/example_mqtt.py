@@ -3,8 +3,13 @@ from explorer import explorer
 import logging
 import time
 
+g_connected = False
+
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
+    global g_connected
+    g_connected = True
+
     pass
 
 
@@ -38,7 +43,9 @@ def example_mqtt():
     logging.basicConfig(format=__log_format)
 
     te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=True)
-    te.enable_logger(logging.DEBUG)
+    te.enableLogger(logging.DEBUG)
+
+    print("\033[1;36m mqtt test start...\033[0m")
 
     te.user_on_connect = on_connect
     te.user_on_disconnect = on_disconnect
@@ -48,14 +55,26 @@ def example_mqtt():
     te.user_on_unsubscribe = on_unsubscribe
 
 
-    te.mqtt_init(mqtt_domain="", useWebsocket=False)
-    te.connect_async()
+    te.mqttInit(mqtt_domain="", useWebsocket=False)
+    te.connect()
 
+    count = 0
+    while True:
+        if te.isMqttConnected():
+            break
+        else:
+            if count >= 3:
+                print("\033[1;31m mqtt test fail...\033[0m")
+                return False
+            time.sleep(1)
+            count += 1
+
+    print("\033[1;36m mqtt test success...\033[0m")
     return True
     '''
     count = 0
     while True:
-        if te.is_mqtt_connected():
+        if te.isMqttConnected():
             break
         else:
             if count >= 3:
@@ -65,8 +84,8 @@ def example_mqtt():
             count += 1
 
 
-    te.shadow_init()
-    te.broadcast_init()
+    te.shadowInit()
+    te.broadcastInit()
 
     while True:
         try:
@@ -77,9 +96,9 @@ def example_mqtt():
             if msg == "1":
                 te.disconnect()
             elif msg == "2":
-                te.shadow_getdata()
+                te.getShadow()
             else:
                 sys.exit()
-    # '''
+    '''
 # if __name__ == '__main__':
 #     example_mqtt()

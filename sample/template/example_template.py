@@ -8,7 +8,7 @@ __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)
 logging.basicConfig(format=__log_format)
 
 te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-te.enable_logger(logging.DEBUG)
+te.enableLogger(logging.DEBUG)
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -62,7 +62,7 @@ def on_template_prop_changed(params, userdata):
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
-    te.template_control_reply(reply_param)
+    te.templateControlReply(reply_param)
 
     pass
 
@@ -91,11 +91,13 @@ def on_template_action(payload, userdata):
         "err_code": 0
     }
 
-    te.template_action_reply(clientToken, res, reply_param)
+    te.templateActionReply(clientToken, res, reply_param)
     pass
 
 
 def example_template():
+
+    print("\033[1;36m template test start...\033[0m")
 
     te.user_on_connect = on_connect
     te.user_on_disconnect = on_disconnect
@@ -108,23 +110,24 @@ def example_template():
     te.on_template_action = on_template_action
 
 
-    te.template_setup("sample/template/template_config.json")
-    te.mqtt_init(mqtt_domain="")
-    te.connect_async()
+    te.templateSetup("sample/template/template_config.json")
+    te.mqttInit(mqtt_domain="")
+    te.connect()
 
     count = 0
     while True:
-        if te.is_mqtt_connected():
+        if te.isMqttConnected():
             break
         else:
             if count >= 3:
                 # sys.exit()
-                return True
+                print("\033[1;31m template test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
 
-    te.template_init()
+    te.templateInit()
 
     while True:
         try:
@@ -145,13 +148,13 @@ def example_template():
                         "append_info": "your self define info"
                     }
                 }
-                te.template_report_sys_info(sys_info)
+                te.templateReportSysInfo(sys_info)
             elif msg == "2":
-                te.template_get_status()
+                te.templateGetStatus()
             elif msg == "3":
                 if g_control_msg_arrived:
-                    params_in = te.template_json_construct_report_array(g_property_params)
-                    te.template_report(params_in)
+                    params_in = te.templateJsonConstructReportArray(g_property_params)
+                    te.templateReport(params_in)
                 else:
                     prop_list = te.template_property_list
                     reports = {
@@ -161,8 +164,8 @@ def example_template():
                         prop_list[3].key: prop_list[3].data
                     }
 
-                    params_in = te.template_json_construct_report_array(reports)
-                    te.template_report(params_in)
+                    params_in = te.templateJsonConstructReportArray(reports)
+                    te.templateReport(params_in)
 
             elif msg == "4":
                 event_list = te.template_events_list
@@ -212,17 +215,21 @@ def example_template():
                         }
                     ]
                 }
-                te.template_event_post(events)
+                te.templateEventPost(events)
 
             elif msg == "5":
-                te.template_deinit()
+                te.templateDeinit()
 
             elif msg == "6":
                 te.disconnect()
 
             elif msg == "7":
-                te.clear_control()
+                te.clearControl()
 
             else:
                 sys.exit()
+    print("\033[1;36m template test success...\033[0m")
     return True
+
+# if __name__ == '__main__':
+#     example_template()
