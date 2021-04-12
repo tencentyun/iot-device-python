@@ -1,0 +1,29 @@
+{
+    "auth_mode":"KEY",
+
+    "productId":"70M7PG3RIJ",
+    "productSecret":"b5GckCPve8vT5hM3N1vsCkv0",
+    "deviceName":"tt1",
+
+    "key_deviceinfo":{
+        "deviceSecret":"Bv042LzregHOSpIYGI/toQ=="
+    },
+
+    "cert_deviceinfo":{
+        "devCertFile":"YOUR_DEVICE_CERT_FILE_NAME",
+        "devPrivateKeyFile":"YOUR_DEVICE_PRIVATE_KEY_FILE_NAME"
+    },
+
+    "subDev":{
+        "subdev_num":4,
+        "subdev_list":
+        [
+                {"sub_productId": "Z53CXC198M", "sub_devName": "dev1"},
+                {"sub_productId": "Z53CXC198M", "sub_devName": "dev2"},
+                {"sub_productId": "ZPHBLEB4J5", "sub_devName": "dev001"},
+                {"sub_productId": "ZPHBLEB4J5", "sub_devName": "dev002"}
+        ]     
+    },
+	
+    "region":"china"
+}
