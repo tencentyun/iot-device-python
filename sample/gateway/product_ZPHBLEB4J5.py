@@ -31,7 +31,7 @@ def on_template_prop_changed(params, userdata):
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
-    te.template_control_reply(reply_param)
+    te.templateControlReply(reply_param)
 
     pass
 
@@ -63,7 +63,7 @@ def on_template_action(payload, userdata):
         "err_code": 0
     }
 
-    te.template_action_reply(clientToken, res, reply_param)
+    te.templateActionReply(clientToken, res, reply_param)
     pass
 
 
@@ -74,11 +74,11 @@ def product_init(product_id, subdev_list, te):
     g_te = te
 
     # 注册数据模板回调函数
-    te.register_user_property_callback(product_id, on_template_prop_changed)
-    te.register_user_action_callback(product_id, on_template_action)
-    te.register_user_event_callback(product_id, on_template_event_post)
+    te.registerUserPropertyCallback(product_id, on_template_prop_changed)
+    te.registerUserActionCallback(product_id, on_template_action)
+    te.registerUserEventCallback(product_id, on_template_event_post)
 
-    te.template_setup("./ZPHBLEB4J5_config.json")
+    te.templateSetup("./ZPHBLEB4J5_config.json")
 
     """
     # 保存自身property list
@@ -106,11 +106,11 @@ def product_init(product_id, subdev_list, te):
         topic_event_list.append((topic_event, 0))
 
     # 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)]
-    rc = te.gateway_subdev_template_subscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
+    rc = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
     if rc == 0:
-        print("gateway_subdev_template_subscribe success")
+        print("gateway subdev subscribe success")
     else:
-        print("gateway_subdev_template_subscribe fail")
+        print("gateway subdev subscribe fail")
 
     # sysinfo report
     sys_info = {
@@ -124,17 +124,17 @@ def product_init(product_id, subdev_list, te):
             "append_info": "your self define info"
         }
     }
-    rc = te.template_report_sys_info(sys_info)
+    rc = te.templateReportSysInfo(sys_info)
     if rc != 0:
         print("sysinfo report fail")
         return 1
 
-    rc = te.template_get_status()
+    rc = te.templateGetStatus()
     if rc != 0:
         print("get status fail")
         return 1
 
-    while te.is_mqtt_connected():
+    while te.isMqttConnected():
 
         # add user logic
         """
