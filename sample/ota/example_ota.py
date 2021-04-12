@@ -9,7 +9,7 @@ __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)
 logging.basicConfig(format=__log_format)
 
 te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-te.enable_logger(logging.DEBUG)
+te.enableLogger(logging.DEBUG)
 
 g_report_res = False
 g_packet_id = 0
@@ -108,7 +108,7 @@ def _cal_exist_fw_md5(ota_cxt):
         return -1
 
     total_read = 0
-    te.ota_reset_md5()
+    te.otaResetMd5()
     size = ota_cxt.download_size
     with open(ota_cxt.file_path, "rb") as f:
         while size > 0:
@@ -116,7 +116,7 @@ def _cal_exist_fw_md5(ota_cxt):
             buf = f.read(rlen)
             if buf == "":
                 break
-            te.ota_md5_update(buf)
+            te.otaMd5Update(buf)
             size -= rlen
             total_read += rlen
         pass
@@ -219,6 +219,8 @@ def _board_upgrade(fw_path):
 
 def example_ota():
 
+    print("\033[1;36m ota test start...\033[0m")
+
     te.user_on_connect = on_connect
     te.user_on_disconnect = on_disconnect
     te.user_on_message = on_message
@@ -227,8 +229,8 @@ def example_ota():
     te.user_on_unsubscribe = on_unsubscribe
     te.user_on_ota_report = on_ota_report
 
-    te.mqtt_init(mqtt_domain="")
-    te.connect_async()
+    te.mqttInit(mqtt_domain="")
+    te.connect()
 
     count = 0
     while True:
@@ -237,15 +239,16 @@ def example_ota():
         else:
             if count >= 3:
                 # sys.exit()
-                return True
+                print("\033[1;31m ota test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
-    te.ota_init()
+    te.otaInit()
 
     cnt = 0
     while True:
-        if not te.is_mqtt_connected():
+        if not te.isMqttConnected():
             if cnt >= 10:
                 print("mqtt disconnect")
                 break
@@ -257,7 +260,7 @@ def example_ota():
         upgrade_fetch_success = True
         ota_cxt = OtaContextData()
 
-        te.ota_report_version(_get_local_fw_running_version())
+        te.otaReportVersion(_get_local_fw_running_version())
         # wait for ack
         time.sleep(1)
 
@@ -265,8 +268,8 @@ def example_ota():
             download_finished = False
             while (download_finished is not True):
                 print("wait for ota upgrade command...")
-                if te.ota_is_fetching():
-                    file_size, state = te.ota_ioctl_number(te.OtaCmdType.IOT_OTAG_FILE_SIZE)
+                if te.otaIsFetching():
+                    file_size, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_FILE_SIZE)
                     if state == "success":
                         ota_cxt.file_size = file_size
                     else:
@@ -274,7 +277,7 @@ def example_ota():
                         break
                     pass
 
-                    version, state = te.ota_ioctl_string(te.OtaCmdType.IOT_OTAG_VERSION, 32)
+                    version, state = te.otaIoctlString(te.OtaCmdType.IOT_OTAG_VERSION, 32)
                     if state == "success":
                         ota_cxt.remote_version = version
 
@@ -283,13 +286,13 @@ def example_ota():
 
                     _update_fw_downloaded_size(ota_cxt)
 
-                    rc = te.ota_download_start(ota_cxt.download_size, ota_cxt.file_size)
+                    rc = te.otaDownloadStart(ota_cxt.download_size, ota_cxt.file_size)
                     if rc != 0:
                         upgrade_fetch_success = False
                         break
 
-                    while (te.ota_is_fetch_finished() is not True):
-                        buf, rv_len = te.ota_fetch_yield(5000)
+                    while (te.otaIsFetchFinished() is not True):
+                        buf, rv_len = te.otaFetchYield(5000)
                         if rv_len > 0:
                             rc = _save_fw_data_to_file(ota_cxt, buf, rv_len)
                             if rc != 0:
@@ -301,7 +304,7 @@ def example_ota():
                             upgrade_fetch_success = False
                             break
 
-                        fetched_size, state = te.ota_ioctl_number(te.OtaCmdType.IOT_OTAG_FETCHED_SIZE)
+                        fetched_size, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_FETCHED_SIZE)
                         if state == "success":
                             ota_cxt.download_size = fetched_size
                         else:
@@ -317,7 +320,7 @@ def example_ota():
 
                     if upgrade_fetch_success:
                         os.remove(ota_cxt.info_file_path)
-                        firmware_valid, state = te.ota_ioctl_number(te.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
+                        firmware_valid, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
                         if firmware_valid == 0:
                             print("The firmware is valid")
                             upgrade_fetch_success = True
@@ -337,9 +340,9 @@ def example_ota():
             # Report after confirming that the burning is successful or failed
             packet_id = 0
             if upgrade_fetch_success:
-                packet_id = te.ota_report_upgrade_success(None)
+                packet_id = te.otaReportUpgradeSuccess(None)
             else:
-                packet_id = te.ota_report_upgrade_fail(None)
+                packet_id = te.otaReportUpgradeFail(None)
             if packet_id >= 0:
                 _wait_for_pub_ack(packet_id)
 
@@ -347,4 +350,5 @@ def example_ota():
         time.sleep(2)
 
     te.disconnect()
+    print("\033[1;36m ota test success...\033[0m")
     return True
