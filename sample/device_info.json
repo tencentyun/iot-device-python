@@ -3,10 +3,10 @@
 
     "productId":"YOUR_PRODUCT_ID",
     "productSecret":"YOUR_PRODUCT_SECRET",
-    "deviceName":"",
+    "deviceName":"YOUR_DEVICE_NAME",
 
     "key_deviceinfo":{
-        "deviceSecret":""
+        "deviceSecret":"YOUR_DEVICE_SECRET"
     },
 
     "cert_deviceinfo":{
