@@ -2,6 +2,7 @@ import sys
 from explorer import explorer
 import logging
 import time
+from hub.hub import QcloudHub
 
 g_connected = False
 
@@ -38,11 +39,11 @@ def on_unsubscribe(mid, userdata):
     pass
 
 
-def example_mqtt():
+def example_shadow():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=True)
+    te = explorer.QcloudExplorer(device_file="sample/shadow/device_info.json", tls=True)
     te.enableLogger(logging.DEBUG)
 
     print("\033[1;36m mqtt test start...\033[0m")
@@ -69,36 +70,32 @@ def example_mqtt():
             time.sleep(1)
             count += 1
 
-    print("\033[1;36m mqtt test success...\033[0m")
-    return True
-    '''
-    count = 0
-    while True:
-        if te.isMqttConnected():
-            break
-        else:
-            if count >= 3:
-                # sys.exit()
-                return True
-            time.sleep(1)
-            count += 1
-
-
     te.shadowInit()
-    te.broadcastInit()
 
     while True:
-        try:
-            msg = input()
-        except KeyboardInterrupt:
-            sys.exit()
-        else:
-            if msg == "1":
-                te.disconnect()
-            elif msg == "2":
-                te.getShadow()
-            else:
-                sys.exit()
-    '''
+        p_prop = QcloudHub.template_property()
+        p_prop.key = "updateCount"
+        p_prop.data = 0
+        p_prop.type = "int"
+        
+        p_prop1 = QcloudHub.template_property()
+        p_prop1.key = "updateCount11"
+        p_prop1.data = "shadow"
+        p_prop1.type = "string"
+
+        te.getShadow()
+
+        payload = te.shadowJsonConstructReport(p_prop, p_prop1)
+        te.shadowUpdate(payload, len(payload))
+
+        time.sleep(1)
+        payload = te.shadowJsonConstructReport(p_prop)
+        te.shadowUpdate(payload, len(payload))
+
+        time.sleep(1)
+
+    print("\033[1;36m shadow test success...\033[0m")
+    return True
+
 # if __name__ == '__main__':
-#     example_mqtt()
+# 	example_shadow()
