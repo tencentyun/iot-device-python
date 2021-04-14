@@ -16,6 +16,24 @@
       "revId": "8e5273b183b58e81b5de1bd5782e80dfa929b063",
       "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "63784184_85965979",
+        "filename": "sample/shadow/device_info.json",
+        "patchSetId": 5
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-04-14T11:54:10Z",
+      "side": 1,
+      "message": "这个误提交了",
+      "parentUuid": "82493542_08fce9d3",
+      "revId": "8e5273b183b58e81b5de1bd5782e80dfa929b063",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
     }
   ]
 }
