@@ -12,7 +12,7 @@
 
 ## 订阅 数据模板相关联 Topic 主题
 
-运行 [MqttSample.py](../sample/MqttSample.py) 的main函数，设备成功上线后，调用template_init()，订阅数据模板相关联的属性、事件和行为类型的 Topic:
+运行 [example_template.py](../sample/template/example_template.py) 的main函数，设备成功上线后，调用`templateInit()`，订阅数据模板相关联的属性、事件和行为类型的 Topic:
 
 ```
 $thing/down/property/{ProductID}/{DeviceName}
@@ -26,16 +26,13 @@ def on_message(topic, payload, qos, userdata):
     print("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
     pass
 
-
 def on_publish(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
-
 def on_subscribe(mid, granted_qos, userdata):
     print("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
     pass
-
 
 def on_unsubscribe(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
@@ -52,33 +49,41 @@ te.on_template_prop_changed = on_template_prop_changed
 te.on_template_event_post = on_template_event_post
 te.on_template_action = on_template_action
 
-te.template_setup("./example_config.json")
-te.mqtt_init(mqtt_domain="")
-te.connect_async()
+te.templateSetup("sample/template/template_config.json")
+te.mqttInit(mqtt_domain="")
+te.connect()
 
-te.template_init()
+te.templateInit()
 ```
 
 观察日志。
 
 ```
-2021-03-16 11:01:18,267.267 [explorer.py:198] - DEBUG - sub topic:$thing/down/property/ZPHBLEB4J5/dev001,qos:0
-2021-03-16 11:01:18,267.267 [client.py:2165] - DEBUG - Sending SUBSCRIBE (d0, m3) [(b'$thing/down/property/ZPHBLEB4J5/dev001', 0)]
-2021-03-16 11:01:18,268.268 [explorer.py:198] - DEBUG - subscribe success topic:$thing/down/property/ZPHBLEB4J5/dev001
-2021-03-16 11:01:18,268.268 [explorer.py:198] - DEBUG - mid:3
-2021-03-16 11:01:18,268.268 [explorer.py:198] - DEBUG - sub topic:$thing/down/event/ZPHBLEB4J5/dev001,qos:0
-2021-03-16 11:01:18,269.269 [client.py:2165] - DEBUG - Sending SUBSCRIBE (d0, m4) [(b'$thing/down/event/ZPHBLEB4J5/dev001', 0)]
-2021-03-16 11:01:18,269.269 [explorer.py:198] - DEBUG - subscribe success topic:$thing/down/event/ZPHBLEB4J5/dev001
-2021-03-16 11:01:18,269.269 [explorer.py:198] - DEBUG - mid:4
-2021-03-16 11:01:18,269.269 [explorer.py:198] - DEBUG - sub topic:$thing/down/action/ZPHBLEB4J5/dev001,qos:0
-2021-03-16 11:01:18,269.269 [client.py:2165] - DEBUG - Sending SUBSCRIBE (d0, m5) [(b'$thing/down/action/ZPHBLEB4J5/dev001', 0)]
-2021-03-16 11:01:18,270.270 [explorer.py:198] - DEBUG - subscribe success topic:$thing/down/action/ZPHBLEB4J5/dev001
+2021-04-15 19:51:15,702.702 [hub.py:180] - DEBUG - sub topic:$thing/down/property/NCUL2VSYG6/test02,qos:0
+2021-04-15 19:51:15,703.703 [client.py:2404] - DEBUG - Sending SUBSCRIBE (d0, m3) [(b'$thing/down/property/NCUL2VSYG6/test02', 0)]
+2021-04-15 19:51:15,704.704 [hub.py:180] - DEBUG - subscribe success topic:$thing/down/property/NCUL2VSYG6/test02
+2021-04-15 19:51:15,705.705 [hub.py:180] - DEBUG - mid:3
+2021-04-15 19:51:15,705.705 [hub.py:180] - DEBUG - sub topic:$thing/down/event/NCUL2VSYG6/test02,qos:0
+2021-04-15 19:51:15,706.706 [client.py:2404] - DEBUG - Sending SUBSCRIBE (d0, m4) [(b'$thing/down/event/NCUL2VSYG6/test02', 0)]
+2021-04-15 19:51:15,707.707 [hub.py:180] - DEBUG - subscribe success topic:$thing/down/event/NCUL2VSYG6/test02
+2021-04-15 19:51:15,707.707 [hub.py:180] - DEBUG - mid:4
+2021-04-15 19:51:15,708.708 [hub.py:180] - DEBUG - sub topic:$thing/down/action/NCUL2VSYG6/test02,qos:0
+2021-04-15 19:51:15,708.708 [client.py:2404] - DEBUG - Sending SUBSCRIBE (d0, m5) [(b'$thing/down/action/NCUL2VSYG6/test02', 0)]
+2021-04-15 19:51:15,709.709 [hub.py:180] - DEBUG - subscribe success topic:$thing/down/action/NCUL2VSYG6/test02
+2021-04-15 19:51:15,710.710 [hub.py:180] - DEBUG - mid:5
+2021-04-15 19:51:15,749.749 [client.py:2404] - DEBUG - Received SUBACK
+on_subscribe:mid:0,granted_qos:4,userdata:None
+2021-04-15 19:51:15,752.752 [client.py:2404] - DEBUG - Received SUBACK
+on_subscribe:mid:0,granted_qos:3,userdata:None
+2021-04-15 19:51:15,758.758 [client.py:2404] - DEBUG - Received SUBACK
+on_subscribe:mid:0,granted_qos:5,userdata:None
+
 ```
 以上日志为 订阅 Topic 主题 成功。
 
 ## 取消订阅 Topic 主题
 
-运行 [MqttSample.py](../sample/MqttSample.py) ，设备成功上线后，订阅过Topic后，调用template_deinit()，取消订阅属性、事件和行为类型的 Topic:
+运行 [example_template.py](../sample/template/example_template.py) ，设备成功上线后，订阅过Topic后，调用template_deinit()，取消订阅属性、事件和行为类型的 Topic:
 
 ```
 $thing/down/property/{ProductID}/{DeviceName}
@@ -88,23 +93,23 @@ $thing/down/action/{ProductID}/{DeviceName}
 示例代码如下：
 
 ```
-te.template_deinit()
+te.templateDeinit()
 ```
 
 观察输出日志。
 
 ```
-2021-03-16 14:29:40,678.678 [client.py:2165] - DEBUG - Sending UNSUBSCRIBE (d0, m6) [b'$thing/down/property/ZPHBLEB4J5/dev001']
-2021-03-16 14:29:40,678.678 [explorer.py:198] - DEBUG - mid:6
-2021-03-16 14:29:40,678.678 [client.py:2165] - DEBUG - Sending UNSUBSCRIBE (d0, m7) [b'$thing/down/event/ZPHBLEB4J5/dev001']
-2021-03-16 14:29:40,679.679 [explorer.py:198] - DEBUG - mid:7
-2021-03-16 14:29:40,679.679 [client.py:2165] - DEBUG - Sending UNSUBSCRIBE (d0, m8) [b'$thing/down/action/ZPHBLEB4J5/dev001']
-2021-03-16 14:29:40,679.679 [explorer.py:198] - DEBUG - mid:8
-2021-03-16 14:29:40,726.726 [client.py:2165] - DEBUG - Received UNSUBACK (Mid: 8)
+2021-04-15 20:12:48,524.524 [client.py:2404] - DEBUG - Sending UNSUBSCRIBE (d0, m6) [b'$thing/down/property/NCUL2VSYG6/test02']
+2021-04-15 20:12:48,525.525 [hub.py:180] - DEBUG - mid:6
+2021-04-15 20:12:48,525.525 [client.py:2404] - DEBUG - Sending UNSUBSCRIBE (d0, m7) [b'$thing/down/event/NCUL2VSYG6/test02']
+2021-04-15 20:12:48,525.525 [hub.py:180] - DEBUG - mid:7
+2021-04-15 20:12:48,525.525 [client.py:2404] - DEBUG - Sending UNSUBSCRIBE (d0, m8) [b'$thing/down/action/NCUL2VSYG6/test02']
+2021-04-15 20:12:48,525.525 [hub.py:180] - DEBUG - mid:8
+2021-04-15 20:12:48,572.572 [client.py:2404] - DEBUG - Received UNSUBACK (Mid: 8)
 on_unsubscribe:mid:8,userdata:None
-2021-03-16 14:29:40,726.726 [client.py:2165] - DEBUG - Received UNSUBACK (Mid: 6)
+2021-04-15 20:12:48,578.578 [client.py:2404] - DEBUG - Received UNSUBACK (Mid: 6)
+2021-04-15 20:12:48,579.579 [client.py:2404] - DEBUG - Received UNSUBACK (Mid: 7)
 on_unsubscribe:mid:6,userdata:None
-2021-03-16 14:29:40,727.727 [client.py:2165] - DEBUG - Received UNSUBACK (Mid: 7)
 on_unsubscribe:mid:7,userdata:None
 ```
 以上日志为 取消订阅 Topic 主题 成功。
