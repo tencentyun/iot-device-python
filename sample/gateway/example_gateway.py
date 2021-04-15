@@ -3,6 +3,7 @@ import time
 import logging
 from threading import Thread
 from explorer import explorer
+from hub.hub import QcloudHub
 
 from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
 from gateway import product_Z53CXC198M as product_Z53CXC198M
@@ -123,20 +124,20 @@ def example_gateway():
         else:
             if msg == "1":
                 for subdev in subdev_list:
-                    if subdev.session_status is not te.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
+                    if subdev.session_status is not QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
                         rc = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            subdev.session_status = te.SessionState.SUBDEV_SEESION_STATUS_ONLINE
+                            subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE
                             print("online success")
                         else:
                             print("online fail")
 
             elif msg == "2":
                 for subdev in subdev_list:
-                    if subdev.session_status == te.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
+                    if subdev.session_status == QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
                         rc = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            subdev.session_status = te.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
+                            subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
                             print("offline success")
                         else:
                             print("offline fail")
@@ -156,24 +157,6 @@ def example_gateway():
                     print("unbind fail")
 
             elif msg == "5":
-                """
-                # 废弃
-                report = {
-                    "method": "report",
-                    "clientToken": "123",
-                    "params": {}
-                }
-                topic_format = "$thing/up/property/%s/%s"
-                for subdev in subdev_list:
-                    if subdev.session_status == te.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
-                        topic = topic_format % (subdev.sub_productId, subdev.sub_devName)
-                        rc = te.gateway_publish(topic, report)
-                        if rc == 0:
-                            print("gateway_publish success")
-                        else:
-                            print("gateway_publish fail")
-                """
-            elif msg == "6":
                 if not g_task_1_runing:
                     product_id = g_product_list[0]
                     for subdev in subdev_list:
@@ -198,7 +181,7 @@ def example_gateway():
                     g_task_2 = Thread(target=task_2, args=(product_id, g_Z53CXC198M_subdev_list,))
                     g_task_2.start()
 
-            elif msg == "7":
+            elif msg == "6":
                 te.disconnect()
                 # global g_task_1
                 if g_task_1.is_alive():
@@ -214,3 +197,5 @@ def example_gateway():
                 sys.exit()
     print("\033[1;36m gateway test success...\033[0m")
     return True
+# if __name__ == '__main__':
+#	example_gateway()
