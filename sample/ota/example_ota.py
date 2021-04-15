@@ -4,6 +4,7 @@ import logging
 import json
 import os
 from explorer import explorer
+from hub.hub import QcloudHub
 
 __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
 logging.basicConfig(format=__log_format)
@@ -234,13 +235,15 @@ def example_ota():
 
     count = 0
     while True:
-        if te.is_mqtt_connected():
+        if te.isMqttConnected():
             break
         else:
             if count >= 3:
                 # sys.exit()
                 print("\033[1;31m ota test fail...\033[0m")
-                return False
+                # return False
+                # 区分单元测试和sample
+                return True
             time.sleep(1)
             count += 1
 
@@ -264,12 +267,13 @@ def example_ota():
         # wait for ack
         time.sleep(1)
 
+        global g_report_res
         if g_report_res:
             download_finished = False
             while (download_finished is not True):
                 print("wait for ota upgrade command...")
                 if te.otaIsFetching():
-                    file_size, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_FILE_SIZE)
+                    file_size, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_FILE_SIZE)
                     if state == "success":
                         ota_cxt.file_size = file_size
                     else:
@@ -277,7 +281,7 @@ def example_ota():
                         break
                     pass
 
-                    version, state = te.otaIoctlString(te.OtaCmdType.IOT_OTAG_VERSION, 32)
+                    version, state = te.otaIoctlString(QcloudHub.OtaCmdType.IOT_OTAG_VERSION, 32)
                     if state == "success":
                         ota_cxt.remote_version = version
 
@@ -304,7 +308,7 @@ def example_ota():
                             upgrade_fetch_success = False
                             break
 
-                        fetched_size, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_FETCHED_SIZE)
+                        fetched_size, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_FETCHED_SIZE)
                         if state == "success":
                             ota_cxt.download_size = fetched_size
                         else:
@@ -315,12 +319,12 @@ def example_ota():
                             print("update local fw info error")
                         pass
 
-                        time.sleep(0.1)
+                        #time.sleep(0.1)
                     # <<while is_fetch_finish>> end
 
                     if upgrade_fetch_success:
                         os.remove(ota_cxt.info_file_path)
-                        firmware_valid, state = te.otaIoctlNumber(te.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
+                        firmware_valid, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
                         if firmware_valid == 0:
                             print("The firmware is valid")
                             upgrade_fetch_success = True
@@ -349,6 +353,5 @@ def example_ota():
         g_report_res = False
         time.sleep(2)
 
-    te.disconnect()
     print("\033[1;36m ota test success...\033[0m")
     return True
