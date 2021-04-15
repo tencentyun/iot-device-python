@@ -361,7 +361,7 @@ QVrcRBDxzx/G\n\
         sign = hmac.new(product_secret.encode("utf-8"),
                         sign_content.encode("utf-8"), hashlib.sha1).hexdigest()
         sign_base64 = base64.b64encode(sign.encode('utf-8')).decode('utf-8')
-        self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
+        # self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
 
         requset_data = {
             "deviceName": device_name,
@@ -1554,8 +1554,6 @@ QVrcRBDxzx/G\n\
             timestamp = int(time.time())
             sign_format = '%s%s;%d;%d'
             sign_content = sign_format % (pid, name, nonce, timestamp)
-            print("sign_content:%s" % sign_content)
-            print("bind_secret:%s" % bind_secret)
 
             # 计算二进制
             sign = hmac.new(bind_secret.encode("utf-8"), sign_content.encode("utf-8"), hashlib.sha1).digest()
@@ -1660,7 +1658,7 @@ QVrcRBDxzx/G\n\
 
         return rc
 
-    def gatewayBindSubdev(self, sub_productId, sub_devName, sub_secret):
+    def gatewaySubdevBind(self, sub_productId, sub_devName, sub_secret):
         if sub_productId is None or len(sub_productId) == 0:
             raise ValueError('Invalid sub_productId.')
         if sub_devName is None or len(sub_devName) == 0:
@@ -1687,7 +1685,7 @@ QVrcRBDxzx/G\n\
 
         return rc
     
-    def gatewayUnbindSubdev(self, sub_productId, sub_devName, sub_secret):
+    def gatewaySubdevUnbind(self, sub_productId, sub_devName, sub_secret):
         if sub_productId is None or len(sub_productId) == 0:
             raise ValueError('Invalid sub_productId.')
         if sub_devName is None or len(sub_devName) == 0:
