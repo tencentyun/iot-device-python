@@ -6,3 +6,4 @@ test_env/
 samples/
 build.sh
 TIoTExploreSDK.egg-info/
+*.pyc
