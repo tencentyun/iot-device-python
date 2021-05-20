@@ -43,7 +43,6 @@ def on_unsubscribe(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
-
 def on_template_prop_changed(params, userdata):
     print("%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
 
@@ -108,7 +107,6 @@ def example_template():
     te.on_template_prop_changed = on_template_prop_changed
     te.on_template_event_post = on_template_event_post
     te.on_template_action = on_template_action
-
 
     te.templateSetup("sample/template/template_config.json")
     te.mqttInit(mqtt_domain="")
