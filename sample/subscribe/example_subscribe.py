@@ -3,13 +3,9 @@ from explorer import explorer
 import logging
 import time
 
-g_connected = False
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
-    global g_connected
-    g_connected = True
-
     pass
 
 
@@ -37,8 +33,11 @@ def on_unsubscribe(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
+def on_subscribe_service_post(payload, userdata):
+    print("payload:%s,userdata:%s" % (payload, userdata))
+    pass
 
-def example_mqtt():
+def example_subscribe():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
@@ -53,6 +52,7 @@ def example_mqtt():
     te.user_on_publish = on_publish
     te.user_on_subscribe = on_subscribe
     te.user_on_unsubscribe = on_unsubscribe
+    te.on_subscribe_service_post = on_subscribe_service_post
 
     te.mqttInit(mqtt_domain="", useWebsocket=False)
     te.connect()
@@ -63,32 +63,19 @@ def example_mqtt():
             break
         else:
             if count >= 3:
-                print("\033[1;31m mqtt test fail...\033[0m")
+                # sys.exit()
+                print("\033[1;31m template test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
             time.sleep(1)
             count += 1
 
-    print("\033[1;36m mqtt test success...\033[0m")
+    te.subscribeInit()
     return True
+
     '''
-    count = 0
-    while True:
-        if te.isMqttConnected():
-            break
-        else:
-            if count >= 3:
-                # sys.exit()
-                return True
-            time.sleep(1)
-            count += 1
-
-
-    te.shadowInit()
-    te.broadcastInit()
-
-    while True:
+        while True:
         try:
             msg = input()
         except KeyboardInterrupt:
@@ -101,5 +88,6 @@ def example_mqtt():
             else:
                 sys.exit()
     '''
-if __name__ == '__main__':
-    example_mqtt()
+
+# if __name__ == '__main__':
+#     example_subscribe()
