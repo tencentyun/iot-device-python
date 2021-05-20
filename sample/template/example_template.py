@@ -7,7 +7,7 @@ from explorer import explorer
 __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
 logging.basicConfig(format=__log_format)
 
-te = explorer.QcloudExplorer(device_file="sample/device_info.json")
+te = explorer.QcloudExplorer(device_file="../device_info.json")
 te.enableLogger(logging.DEBUG)
 
 g_property_params = None
@@ -43,6 +43,9 @@ def on_unsubscribe(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
+def on_template_service_post(payload, userdata):
+    print("payload:%s,userdata:%s",payload,userdata)
+    pass
 
 def on_template_prop_changed(params, userdata):
     print("%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
@@ -108,6 +111,7 @@ def example_template():
     te.on_template_prop_changed = on_template_prop_changed
     te.on_template_event_post = on_template_event_post
     te.on_template_action = on_template_action
+    te.on_template_service_post = on_template_service_post
 
 
     te.templateSetup("sample/template/template_config.json")
