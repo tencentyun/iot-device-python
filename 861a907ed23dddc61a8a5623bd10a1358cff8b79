@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "73883449_34126169",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-05-20T06:56:06Z",
+      "side": 1,
+      "message": "和上面的callback分组写一块",
+      "revId": "861a907ed23dddc61a8a5623bd10a1358cff8b79",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "932ee9d3_8d110666",
+        "filename": "sample/mqtt/example_mqtt.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-05-20T06:56:06Z",
+      "side": 1,
+      "message": "不能改变路径",
+      "revId": "861a907ed23dddc61a8a5623bd10a1358cff8b79",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a9d43647_4a696c8d",
+        "filename": "sample/mqtt/example_mqtt.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-05-20T06:56:06Z",
+      "side": 1,
+      "message": "调试完需要关闭，通过单元测试调用",
+      "revId": "861a907ed23dddc61a8a5623bd10a1358cff8b79",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
