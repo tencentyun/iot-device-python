@@ -144,6 +144,7 @@ QVrcRBDxzx/G\n\
         self.__on_template_prop_changed = None
         self.__on_template_action = None
         self.__on_template_event_post = None
+        self.__on_subscribe_service_post = None
 
         # ota
         # 保存__on_subscribe()返回的mid和qos对,用以判断订阅是否成功
@@ -181,6 +182,7 @@ QVrcRBDxzx/G\n\
         self.__loop_thread = QcloudHub.LoopThread(self.__explorer_log)
         self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
         self.__user_cmd_cb_init()
+
         pass
 
     @property
@@ -277,6 +279,14 @@ QVrcRBDxzx/G\n\
     @on_template_event_post.setter
     def on_template_event_post(self, value):
         self.__on_template_event_post = value
+
+    @property
+    def on_subscribe_service_post(self):
+        return self.__on_subscribe_service_post
+
+    @on_subscribe_service_post.setter
+    def on_subscribe_service_post(self, value):
+        self.__on_subscribe_service_post = value
 
     def __user_cmd_cb_init(self):
         self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
@@ -865,7 +875,13 @@ QVrcRBDxzx/G\n\
             pass
 
         elif topic == self.__topic_info.template_service_topic_sub:
-            self.__explorer_log.info("Reserved: template service topic")
+            self.__explorer_log.info("--------Reserved: template service topic")
+
+            try:
+                self.__on_subscribe_service_post(payload, self.__user_data)
+            except Exception as e:
+                self.__explorer_log.error("__on_subscribe_service_post raise exception:%s" % e)
+            pass
 
         elif topic == self.__topic_info.template_raw_topic_sub:
             self.__explorer_log.info("Reserved: template raw topic")
@@ -1231,6 +1247,7 @@ QVrcRBDxzx/G\n\
             return 0
         pass
 
+
     # 暂定传入的message为json格式(json/属性列表?)
     # 传入json格式时该函数应改为内部函数,由template_report()调用
     def templateJsonConstructReportArray(self, payload):
@@ -1412,7 +1429,6 @@ QVrcRBDxzx/G\n\
             return 1
         else:
             return 0
-
         pass
 
     # gateway
@@ -2180,3 +2196,35 @@ QVrcRBDxzx/G\n\
             self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, broadcast_topic_sub))
             return -1
         return 0
+
+    def subscribeInit(self):
+
+        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
+            raise QcloudHub.StateError("current state is not CONNECTED")
+
+        subscribe_topic_sub = self.__topic_info.template_service_topic_sub
+        sub_res, mid = self.subscribe(subscribe_topic_sub, 1)
+        # should deal mid
+        self.__explorer_log.debug("mid:%d" % mid)
+        if sub_res != 0:
+            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, subscribe_topic_sub))
+            return 1
+
+        # rc = self.__subscribe_service_init()
+        # if rc != 0:
+        #     return 1
+
+        return 0
+
+
+    # def __subscribe_service_init(self):
+    #     template_topic_sub = self.__topic_info.template_service_topic_sub
+    #     sub_res, mid = self.subscribe(template_topic_sub, 0)
+    #     #should deal mid
+    #     self.__explorer_log.debug("mid:%d" % mid)
+    #     if sub_res != 0:
+    #         self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+    #         return 1
+    #     else:
+    #         return 0
+    #     pass

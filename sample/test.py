@@ -6,6 +6,7 @@ from gateway import example_gateway as gatewaytest
 from mqtt import example_mqtt as mqtttest
 from ota import example_ota as otatest
 from template import example_template as templatetest
+from subscribe import example_subscribe as subscirbetest
 
 class MyTestCase(unittest.TestCase):
 
@@ -40,6 +41,12 @@ class MyTestCase(unittest.TestCase):
         ret = templatetest.example_template()
         self.assertEqual(ret, True)
         pass
+
+    def test_subscribe(self):
+        ret = subscirbetest.example_subscribe()
+        self.assertEqual(ret, True)
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
