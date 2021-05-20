@@ -42,7 +42,7 @@ def example_mqtt():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json", tls=True)
+    te = explorer.QcloudExplorer(device_file="../device_info.json", tls=True)
     te.enableLogger(logging.DEBUG)
 
     print("\033[1;36m mqtt test start...\033[0m")
@@ -53,7 +53,6 @@ def example_mqtt():
     te.user_on_publish = on_publish
     te.user_on_subscribe = on_subscribe
     te.user_on_unsubscribe = on_unsubscribe
-
 
     te.mqttInit(mqtt_domain="", useWebsocket=False)
     te.connect()
