@@ -400,8 +400,8 @@ QVrcRBDxzx/G\n\
             if reply_obj['Response']['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
                 if reply_obj_data is not None:
-                    psk = QcloudHub._AESUtil.decrypt(reply_obj_data, product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16],
-                                                '0000000000000000')
+                    psk = QcloudHub._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
+                                        '0000000000000000'.encode('UTF-8'))
                     psk = psk.decode('UTF-8', 'ignore').strip().strip(b'\x00'.decode())
                     user_dict = json.loads(psk)
                     self.__explorer_log.info('encrypt type: {}'.format(
