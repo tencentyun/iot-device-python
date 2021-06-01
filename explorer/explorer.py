@@ -355,51 +355,54 @@ QVrcRBDxzx/G\n\
         :param timeout: http/https timeout
         :return: (code, msg): code 0 is success, msg is psk. Other is failed.
         """
-
-        sign_format = 'deviceName=%s&nonce=%d&productId=%s&timestamp=%d'
-        request_format = '%s://gateway.tencentdevices.com/register/dev'
-        header = {'Accept': 'text/xml,application/json;*/*'}
+        sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
+        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
+        request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
 
         device_name = self.__device_file.device_name
         product_id = self.__device_file.product_id
         product_secret = self.__device_file.product_secret
 
+        request_text = request_format % (product_id, device_name)
+        request_hash = hashlib.sha256(request_text.encode("utf-8")).hexdigest()
+
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            device_name, nonce, product_id, timestamp)
-        sign = hmac.new(product_secret.encode("utf-8"),
-                        sign_content.encode("utf-8"), hashlib.sha1).hexdigest()
-        sign_base64 = base64.b64encode(sign.encode('utf-8')).decode('utf-8')
-        # self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
+            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "/device/register", "", "hmacsha256", timestamp,
+            nonce, request_hash)
+        sign_base64 = base64.b64encode(hmac.new(product_secret.encode("utf-8"),
+                        sign_content.encode("utf-8"), hashlib.sha256).digest())
 
-        requset_data = {
-            "deviceName": device_name,
-            "nonce": nonce,
-            "productId": product_id,
-            "timestamp": timestamp,
-            "signature": sign_base64
+        # self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
+        header = {
+            'Content-Type': 'application/json; charset=utf-8',
+            "X-TC-Algorithm": "hmacsha256",
+            "X-TC-Timestamp": timestamp,
+            "X-TC-Nonce": nonce,
+            "X-TC-Signature": sign_base64
         }
-        data = bytes(json.dumps(requset_data), encoding='utf-8')
+        data = bytes(request_text, encoding='utf-8')
 
         context = None
         if self.__tls:
-            request_url = request_format % 'https'
+            request_url = url_format % 'https'
             context = ssl.create_default_context(
                 ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
         else:
-            request_url = request_format % 'http'
+            request_url = url_format % 'http'
         self.__explorer_log.info('dynreg url {}'.format(request_url))
         req = urllib.request.Request(request_url, data=data, headers=header)
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
-            if reply_obj['code'] == 0:
-                reply_obj_data = reply_obj["payload"]
+            if reply_obj['Response']['Len'] > 0:
+                reply_obj_data = reply_obj['Response']["Payload"]
                 if reply_obj_data is not None:
                     psk = QcloudHub._AESUtil.decrypt(reply_obj_data, product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16],
                                                 '0000000000000000')
-                    psk = str(psk, encoding='utf-8')[:reply_obj['len']]
+                    psk = psk.decode('UTF-8', 'ignore').strip().strip(b'\x00'.decode())
                     user_dict = json.loads(psk)
                     self.__explorer_log.info('encrypt type: {}'.format(
                         user_dict['encryptionType']))
