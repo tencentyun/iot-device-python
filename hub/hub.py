@@ -200,25 +200,37 @@ class QcloudHub(object):
             self.__logger = logger
             self.__logger.info('device_info file {}'.format(file_path))
 
+            self.__auth_mode = None
             self.__device_name = None
             self.__product_id = None
             self.__product_secret = None
             self.__device_secret = None
+            self.__ca_file = None
+            self.__cert_file = None
+            self.__private_key_file = None
             self.__region = None
             if self.__logger is not None:
                 self.__logger.info('device_info file {}'.format(file_path))
             with open(file_path, 'r', encoding='utf-8') as f:
                 self.__json_data = json.loads(f.read())
+                self.__auth_mode = self.__json_data['auth_mode']
                 self.__device_name = self.__json_data['deviceName']
                 self.__product_id = self.__json_data['productId']
                 self.__product_secret = self.__json_data['productSecret']
                 self.__device_secret = self.__json_data['key_deviceinfo']['deviceSecret']
+                self.__ca_file = self.__json_data['cert_deviceinfo']['devCaFile']
+                self.__cert_file = self.__json_data['cert_deviceinfo']['devCertFile']
+                self.__private_key_file = self.__json_data['cert_deviceinfo']['devPrivateKeyFile']
                 self.__region = self.__json_data["region"]
             if self.__logger is not None:
                 self.__logger.info(
                     "device name: {}, product id: {}, product secret: {}, device secret: {}".
                         format(self.__device_name, self.__product_id,
                                self.__product_secret, self.__device_secret))
+
+        @property
+        def auth_mode(self):
+            return self.__auth_mode
 
         @property
         def device_name(self):
@@ -235,6 +247,18 @@ class QcloudHub(object):
         @property
         def device_secret(self):
             return self.__device_secret
+
+        @property
+        def ca_file(self):
+            return self.__ca_file
+
+        @property
+        def cert_file(self):
+            return self.__cert_file
+
+        @property
+        def private_key_file(self):
+            return self.__private_key_file
 
         @property
         def region(self):

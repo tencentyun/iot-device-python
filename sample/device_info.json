@@ -10,6 +10,7 @@
     },
 
     "cert_deviceinfo":{
+        "devCaFile":"YOUR_CA_FILE_NAME",
         "devCertFile":"YOUR_DEVICE_CERT_FILE_NAME",
         "devPrivateKeyFile":"YOUR_DEVICE_PRIVATE_KEY_FILE_NAME"
     },
