@@ -74,6 +74,8 @@ QVrcRBDxzx/G\n\
 
         self.__iot_ca_crt = self.__IOT_CA_CRT
         self.__tls = tls
+        # 默认使用密钥认证
+        self.__key_mode = True
 
         self.__mqtt_client = None
         self.__host = None
@@ -643,9 +645,12 @@ QVrcRBDxzx/G\n\
         self.__explorer_log.debug("mqttInit")
         timestamp = str(int(round(time.time() * 1000)))
 
+        auth_mode = self.__device_file.auth_mode
         device_name = self.__device_file.device_name
         product_id = self.__device_file.product_id
         device_secret = self.__device_file.device_secret
+        if auth_mode == "CERT":
+            self.__key_mode = False
 
         self.__useWebsocket = useWebsocket
 
@@ -718,9 +723,17 @@ QVrcRBDxzx/G\n\
             self.__worker_loop_exit_req = False
         return self.__loop_thread.start(self.__loop_forever)
 
-    def __ssl_init(self):
-        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
-        self.__mqtt_client.tls_set_context(context)
+    def __ssl_init(self, key_mode):
+        # 密钥认证
+        if key_mode is True:
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
+            self.__mqtt_client.tls_set_context(context)
+        else:
+            ca = self.__device_file.ca_file
+            cert = self.__device_file.cert_file
+            key = self.__device_file.private_key_file
+            self.__mqtt_client.tls_set(ca_certs=ca, certfile=cert, keyfile=key,
+                                    cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_SSLv23)
     pass
 
     def disconnect(self):
@@ -940,7 +953,7 @@ QVrcRBDxzx/G\n\
                     mqtt_port = self.__mqtt_socket_tls_port
                     pass
 
-                self.__ssl_init()
+                self.__ssl_init(self.__key_mode)
             except ssl.SSLError as e:
                 self.__explorer_log.error("ssl init error:" + str(e))
                 self.__explorer_state = QcloudHub.HubState.INITIALIZED
