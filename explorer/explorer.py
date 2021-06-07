@@ -37,88 +37,26 @@ from hub.hub import QcloudHub
 
 class QcloudExplorer(object):
 
-    __IOT_CA_CRT = "\
------BEGIN CERTIFICATE-----\n\
-MIIDxTCCAq2gAwIBAgIJALM1winYO2xzMA0GCSqGSIb3DQEBCwUAMHkxCzAJBgNV\n\
-BAYTAkNOMRIwEAYDVQQIDAlHdWFuZ0RvbmcxETAPBgNVBAcMCFNoZW5aaGVuMRAw\n\
-DgYDVQQKDAdUZW5jZW50MRcwFQYDVQQLDA5UZW5jZW50IElvdGh1YjEYMBYGA1UE\n\
-AwwPd3d3LnRlbmNlbnQuY29tMB4XDTE3MTEyNzA0MjA1OVoXDTMyMTEyMzA0MjA1\n\
-OVoweTELMAkGA1UEBhMCQ04xEjAQBgNVBAgMCUd1YW5nRG9uZzERMA8GA1UEBwwI\n\
-U2hlblpoZW4xEDAOBgNVBAoMB1RlbmNlbnQxFzAVBgNVBAsMDlRlbmNlbnQgSW90\n\
-aHViMRgwFgYDVQQDDA93d3cudGVuY2VudC5jb20wggEiMA0GCSqGSIb3DQEBAQUA\n\
-A4IBDwAwggEKAoIBAQDVxwDZRVkU5WexneBEkdaKs4ehgQbzpbufrWo5Lb5gJ3i0\n\
-eukbOB81yAaavb23oiNta4gmMTq2F6/hAFsRv4J2bdTs5SxwEYbiYU1teGHuUQHO\n\
-iQsZCdNTJgcikga9JYKWcBjFEnAxKycNsmqsq4AJ0CEyZbo//IYX3czEQtYWHjp7\n\
-FJOlPPd1idKtFMVNG6LGXEwS/TPElE+grYOxwB7Anx3iC5ZpE5lo5tTioFTHzqbT\n\
-qTN7rbFZRytAPk/JXMTLgO55fldm4JZTP3GQsPzwIh4wNNKhi4yWG1o2u3hAnZDv\n\
-UVFV7al2zFdOfuu0KMzuLzrWrK16SPadRDd9eT17AgMBAAGjUDBOMB0GA1UdDgQW\n\
-BBQrr48jv4FxdKs3r0BkmJO7zH4ALzAfBgNVHSMEGDAWgBQrr48jv4FxdKs3r0Bk\n\
-mJO7zH4ALzAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQDRSjXnBc3T\n\
-d9VmtTCuALXrQELY8KtM+cXYYNgtodHsxmrRMpJofsPGiqPfb82klvswpXxPK8Xx\n\
-SuUUo74Fo+AEyJxMrRKlbJvlEtnpSilKmG6rO9+bFq3nbeOAfat4lPl0DIscWUx3\n\
-ajXtvMCcSwTlF8rPgXbOaSXZidRYNqSyUjC2Q4m93Cv+KlyB+FgOke8x4aKAkf5p\n\
-XR8i1BN1OiMTIRYhGSfeZbVRq5kTdvtahiWFZu9DGO+hxDZObYGIxGHWPftrhBKz\n\
-RT16Amn780rQLWojr70q7o7QP5tO0wDPfCdFSc6CQFq/ngOzYag0kJ2F+O5U6+kS\n\
-QVrcRBDxzx/G\n\
------END CERTIFICATE-----"
+    def __init__(self, device_file, tls=True, userdata=None):
+        self.__hub = QcloudHub(device_file, tls)
+        # 用户回调注册到hub层
+        self.__register_hub_event_callback()
 
-    def __init__(self, device_file, tls=True, user_data=None):
-        self.__explorer_log = QcloudHub.ExplorerLog()
+        self.__logger = self.__hub._logger
         self.__PahoLog = logging.getLogger("Paho")
         self.__PahoLog.setLevel(logging.DEBUG)
-        self.__device_file = QcloudHub.DeviceInfo(device_file, self.__explorer_log)
-        self.__topic_info = None
+        self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
+        self.__topic = self.__hub._topic
 
         # set state initialized
-        self.__explorer_state = QcloudHub.HubState.INITIALIZED
-
-        self.__iot_ca_crt = self.__IOT_CA_CRT
-        self.__tls = tls
-        # 默认使用密钥认证
-        self.__key_mode = True
-
-        self.__mqtt_client = None
-        self.__host = None
+        self.__explorer_state = self.__hub.HubState.INITIALIZED
 
         # 用户传参
-        self.__user_data = user_data
-
-        # mqtt set
-        self.__set_mqtt_param()
-        self.__useWebsocket = None
-
-        # topic
-        self.__user_topics_subscribe_request = {}
-        self.__user_topics_unsubscribe_request = {}
-        self.__user_topics_request_lock = threading.Lock()
-        self.__user_topics_unsubscribe_request_lock = threading.Lock()
+        self.__userdata = userdata
 
         self.__template_prop_report_reply_mid = {}
         self.__template_prop_report_reply_mid_lock = threading.Lock()
         self.__user_topics = {}
-
-        # gateway
-        self.__gateway_session_client_id = None
-        self.__gateway_session_online_reply = {}
-        self.__gateway_session_offline_reply = {}
-        self.__gateway_session_bind_reply = {}
-        self.__gateway_session_unbind_reply = {}
-        self.__gateway_raply = False
-
-        # 网关子设备property topic订阅的子设备列表
-        self.__gateway_subdev_property_topic_list = []
-        self.__gateway_subdev_action_topic_list = []
-        self.__gateway_subdev_event_topic_list = []
-
-        # 网关子设备property回调字典(["product_id":callback])
-        self.__on_gateway_subdev_prop_cb_dict = {}
-        self.__on_gateway_subdev_action_cb_dict = {}
-        self.__on_gateway_subdev_event_cb_dict = {}
-
-        self.__gateway_session_online_lock = threading.Lock()
-        self.__gateway_session_offline_lock = threading.Lock()
-        self.__gateway_session_bind_lock = threading.Lock()
-        self.__gateway_session_unbind_lock = threading.Lock()
 
         # 防止多线程同时调用同一注册函数
         self.__register_property_cb_lock = threading.Lock()
@@ -136,7 +74,7 @@ QVrcRBDxzx/G\n\
         self.template_events_list = []
         self.template_action_list = []
         self.template_property_list = []
-        self.gateway_subdev_list = []
+        
 
         # data template reply
         self.__replyAck = -1
@@ -181,9 +119,9 @@ QVrcRBDxzx/G\n\
         self._shadow_token_num = 0
 
         # construct thread handle
-        self.__loop_thread = QcloudHub.LoopThread(self.__explorer_log)
-        self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
-        self.__user_cmd_cb_init()
+        # self.__loop_thread = self.__hub.LoopThread(self.__logger)
+        # self.__user_thread = self.__hub.UserCallBackTask(self.__logger)
+        # self.__user_cmd_cb_init()
 
         pass
 
@@ -290,66 +228,43 @@ QVrcRBDxzx/G\n\
     def on_subscribe_service_post(self, value):
         self.__on_subscribe_service_post = value
 
-    def __user_cmd_cb_init(self):
-        self.__user_thread = QcloudHub.UserCallBackTask(self.__explorer_log)
-        self.__user_cmd_on_connect = "user_on_connect"
-        self.__user_cmd_on_disconnect = "user_on_disconnect"
-        self.__user_cmd_on_message = "user_on_message"
-        self.__user_cmd_on_publish = "user_on_publish"
-        self.__user_cmd_on_subscribe = "user_on_subscribe"
-        self.__user_cmd_on_unsubscribe = "user_on_unsubscribe"
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_connect,
-                                                      self.__user_thread_on_connect_callback)
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_disconnect,
-                                                      self.__user_thread_on_disconnect_callback)
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_message,
-                                                      self.__user_thread_on_message_callback)
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_publish,
-                                                      self.__user_thread_on_publish_callback)
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_subscribe,
-                                                      self.__user_thread_on_subscribe_callback)
-        self.__user_thread.register_callback_with_cmd(self.__user_cmd_on_unsubscribe,
-                                                      self.__user_thread_on_unsubscribe_callback)
-        self.__user_thread.start()
+    # 处理从hub层调用的回调
+    def __hub_on_connect(self, value):
+        # client, user_data, session_flag, rc = value
+        session_flag, rc = value
+        # 调用客户注册到explorer的回调
+        self.__user_on_connect(session_flag['session present'], rc, self.__userdata)
 
-        pass
+    def __hub_on_disconnect(self, value):
+        self.__user_on_disconnect(value, self.__userdata)
 
-    def enableLogger(self, level):
-        self.__explorer_log.set_level(level)
-        self.__explorer_log.enable_logger()
-        if self.__mqtt_client is not None:
-            self.__mqtt_client.enable_logger(self.__PahoLog)
-        self.__PahoLog.setLevel(level)
+    def __hub_on_publish(self, value):
+        self.__user_on_publish(value, self.__userdata)
 
-    def __set_mqtt_callback(self):
-        self.__mqtt_client.on_connect = self.__on_connect
-        self.__mqtt_client.on_disconnect = self.__on_disconnect
-        self.__mqtt_client.on_message = self.__on_message
-        self.__mqtt_client.on_publish = self.__on_publish
-        self.__mqtt_client.on_subscribe = self.__on_subscribe
-        self.__mqtt_client.on_unsubscribe = self.__on_unsubscribe
+    def __hub_on_subscribe(self, value):
+        qos, mid = value
+        self.__user_on_subscribe(qos, mid, self.__userdata)
 
-    def __set_mqtt_param(self):
-        self.__mqtt_tls_port = 8883
-        self.__mqtt_tcp_port = 1883
-        self.__mqtt_socket_tls_port = 443
-        self.__mqtt_socket_tcp_port = 80
-        self.__mqtt_protocol = "MQTTv31"
-        self.__mqtt_transport = "TCP"
-        self.__mqtt_secure = "TLS"
-        self.__mqtt_clean_session = True
-        self.__mqtt_keep_alive = 60
+    def __hub_on_unsubscribe(self, value):
+        self.__user_on_unsubscribe(value, self.__userdata)
 
-        self.__mqtt_auto_reconnect_min_sec = 1
-        self.__mqtt_auto_reconnect_max_sec = 60
-        self.__mqtt_max_queued_message = 40
-        self.__mqtt_max_inflight_message = 20
-        self.__mqtt_auto_reconnect_sec = 0
-        self.__mqtt_request_timeout = 10
+    def __hub_on_message(self, value):
+        self.__user_on_message(value, self.__userdata)
 
-        # default MQTT/CoAP timeout value when connect/pub/sub
-        self.__mqtt_command_timeout = 5
-        pass
+    # 将用户注册到exporer层的回调注册到hub层
+    def __register_hub_event_callback(self):
+        # self.__hub.user_on_connect = self.__hub_on_connect
+        # self.__hub.user_on_disconnect = self.__hub_on_disconnect
+        # self.__hub.user_on_message = self.__hub_on_message
+        # self.__hub.user_on_publish = self.__hub_on_publish
+        # self.__hub.user_on_subscribe = self.__hub_on_subscribe
+        # self.__hub.user_on_unsubscribe = self.__hub_on_unsubscribe
+        self.__hub.user_on_connect = self.__user_on_connect
+        self.__hub.user_on_disconnect = self.__user_on_disconnect
+        self.__hub.user_on_message = self.__user_on_message
+        self.__hub.user_on_publish = self.__user_on_publish
+        self.__hub.user_on_subscribe = self.__user_on_subscribe
+        self.__hub.user_on_unsubscribe = self.__user_on_unsubscribe
 
     def dynregDevice(self, timeout=10):
         """
@@ -357,68 +272,7 @@ QVrcRBDxzx/G\n\
         :param timeout: http/https timeout
         :return: (code, msg): code 0 is success, msg is psk. Other is failed.
         """
-        sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
-        request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
-
-        device_name = self.__device_file.device_name
-        product_id = self.__device_file.product_id
-        product_secret = self.__device_file.product_secret
-
-        request_text = request_format % (product_id, device_name)
-        request_hash = hashlib.sha256(request_text.encode("utf-8")).hexdigest()
-
-        nonce = random.randrange(2147483647)
-        timestamp = int(time.time())
-        sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
-            "/device/register", "", "hmacsha256", timestamp,
-            nonce, request_hash)
-        sign_base64 = base64.b64encode(hmac.new(product_secret.encode("utf-8"),
-                        sign_content.encode("utf-8"), hashlib.sha256).digest())
-
-        # self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
-        header = {
-            'Content-Type': 'application/json; charset=utf-8',
-            "X-TC-Algorithm": "hmacsha256",
-            "X-TC-Timestamp": timestamp,
-            "X-TC-Nonce": nonce,
-            "X-TC-Signature": sign_base64
-        }
-        data = bytes(request_text, encoding='utf-8')
-
-        context = None
-        if self.__tls:
-            request_url = url_format % 'https'
-            context = ssl.create_default_context(
-                ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
-        else:
-            request_url = url_format % 'http'
-        self.__explorer_log.info('dynreg url {}'.format(request_url))
-        req = urllib.request.Request(request_url, data=data, headers=header)
-        with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
-            reply_data = url_file.read().decode('utf-8')
-            reply_obj = json.loads(reply_data)
-            resp = reply_obj['Response']
-
-            if 'Len' in resp and resp['Len'] > 0:
-                reply_obj_data = reply_obj['Response']["Payload"]
-                if reply_obj_data is not None:
-                    psk = QcloudHub._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
-                                        '0000000000000000'.encode('UTF-8'))
-                    psk = psk.decode('UTF-8', 'ignore').strip().strip(b'\x00'.decode())
-                    user_dict = json.loads(psk)
-                    self.__explorer_log.info('encrypt type: {}'.format(
-                        user_dict['encryptionType']))
-                    return 0, user_dict['psk']
-                else:
-                    self.__explorer_log.warring('payload is null')
-                    return -1, 'payload is null'
-            else:
-                err_code = resp['Error']
-                self.__explorer_log.error('code: {}, error message: {}'.format(
-                    err_code, err_code['Message']))
-                return -1, err_code['Message']
+        return self.__hub.dynregDevice(timeout)
 
     # 遍历逻辑待优化
     def __topic_match(self, payload, topic, plist, pdict):
@@ -431,10 +285,10 @@ QVrcRBDxzx/G\n\
                     # params = payload["params"]
                     user_callback = pdict[tup_product]
                     print("call user_callback")
-                    user_callback(payload, self.__user_data)
+                    user_callback(payload, self.__userdata)
                     return 0
                 else:
-                    self.__explorer_log.warring('topic not registed')
+                    self.__logger.warring('topic not registed')
                     return 1
             else:
                 continue
@@ -466,36 +320,17 @@ QVrcRBDxzx/G\n\
 
         return 1
 
-    def __handle_gateway(self, message):
-        self.__explorer_log.debug("gateway payload:%s" % message)
-        ptype = message["type"]
-        payload = message["payload"]
-        devices = payload["devices"]
-        result = devices[0]["result"]
-        product_id = devices[0]["product_id"]
-        device_name = devices[0]["device_name"]
-        client_id = product_id + "/" + device_name
-
-        self.__gateway_raply = True
-        if ptype == "online":
-            self.__gateway_session_online_reply[client_id] = result
-        elif ptype == "offline":
-            self.__gateway_session_offline_reply[client_id] = result
-        elif ptype == "bind":
-            self.__gateway_session_bind_reply[client_id] = result
-        elif ptype == "unbind":
-            self.__gateway_session_unbind_reply[client_id] = result
-        pass
+    
 
     def __handle_reply(self, method, payload):
-        self.__explorer_log.debug("reply payload:%s" % payload)
+        self.__logger.debug("reply payload:%s" % payload)
 
         clientToken = payload["clientToken"]
         replyAck = payload["code"]
         if method == "get_status_reply":
             if replyAck == 0:
-                topic_pub = self.__topic_info.template_property_topic_pub
-                self.__topic_info.control_clientToken = clientToken
+                topic_pub = self.__topic.template_property_topic_pub
+                self.__topic.control_clientToken = clientToken
 
                 # IOT_Template_ClearControl
                 message = {
@@ -504,12 +339,12 @@ QVrcRBDxzx/G\n\
                 }
                 rc, mid = self.publish(topic_pub, message, 0)
                 # should deal mid
-                self.__explorer_log.debug("mid:%d" % mid)
+                self.__logger.debug("mid:%d" % mid)
                 if rc != 0:
-                    self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
+                    self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             else:
                 self.__replyAck = replyAck
-                self.__explorer_log.debug("replyAck:%d" % replyAck)
+                self.__logger.debug("replyAck:%d" % replyAck)
 
         else:
             self.__replyAck = replyAck
@@ -518,27 +353,34 @@ QVrcRBDxzx/G\n\
     def __handle_control(self, payload):
         clientToken = payload["clientToken"]
         params = payload["params"]
-        self.__topic_info.control_clientToken = clientToken
+        self.__topic.control_clientToken = clientToken
         # 调用用户回调,回调中应调用template_control_reply()
-        self.__on_template_prop_changed(params, self.__user_data)
+        self.__on_template_prop_changed(params, self.__userdata)
+
+    def __handle_property(self, payload):
+        method = payload["method"]
+        if method == "control":
+            self.__handle_control(payload)
+        else:
+            self.__handle_reply(method, payload)
+
+    def __handle_event(self, payload):
+        try:
+            self.__on_template_event_post(payload, self.__userdata)
+        except Exception as e:
+            self.__logger.error("on_template_event_post raise exception:%s" % e)
+        pass
 
     def __handle_action(self, payload):
-        """
-        clientToken = payload["clientToken"]
-        actionId = payload["actionId"]
-        timestamp = payload["timestamp"]
-        params = payload["params"]
-        """
-
         # 调用用户回调,回调中应调用IOT_ACTION_REPLY()
         # self.__on_template_action(clientToken, actionId, timestamp, params, self.__user_data)
-        self.__on_template_action(payload, self.__user_data)
+        self.__on_template_action(payload, self.__userdata)
         pass
 
     def __handle_ota(self, payload):
         ptype = payload["type"]
         if ptype == "report_version_rsp":
-            self.__user_on_ota_report(payload, self.__user_data)
+            self.__user_on_ota_report(payload, self.__userdata)
         elif ptype == "update_firmware":
             self.__ota_info_get(payload)
 
@@ -548,463 +390,42 @@ QVrcRBDxzx/G\n\
             self.__process_id = topic[pos + 1:len(topic)]
             return 0
         else:
-            self.__explorer_log.error("cannot found process id from topic:%s" % topic)
+            self.__logger.error("cannot found process id from topic:%s" % topic)
             return -1
 
     def __handle_rrpc(self, topic, payload):
         rc = self.__rrpc_get_process_id(topic)
         if rc < 0:
-            raise QcloudHub.StateError("cannot found process id")
+            raise self.__hub.StateError("cannot found process id")
 
         # 调用用户注册的回调
         if self.__user_on_rrpc_message is not None:
-            self.__user_on_rrpc_message(payload, self.__user_data)
+            self.__user_on_rrpc_message(payload, self.__userdata)
 
     def subscribe(self, topic, qos):
-        self.__explorer_log.debug("sub topic:%s,qos:%d" % (topic, qos))
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
-        if isinstance(topic, tuple):
-            topic, qos = topic
-        if isinstance(topic, str):
-            if qos < 0:
-                raise ValueError('Invalid QoS level.')
-            if topic is None or len(topic) == 0:
-                raise ValueError('Invalid topic.')
-            pass
-            self.__user_topics_request_lock.acquire()
-            rc, mid = self.__mqtt_client.subscribe(topic, qos)
-            if rc == mqtt.MQTT_ERR_SUCCESS:
-                self.__explorer_log.debug("subscribe success topic:%s" % topic)
-                self.__user_topics_subscribe_request[mid] = [(topic, qos)]
-            self.__user_topics_request_lock.release()
-            if rc == mqtt.MQTT_ERR_SUCCESS:
-                return 0, mid
-            if rc == mqtt.MQTT_ERR_NO_CONN:
-                return 2, None
-            else:
-                self.__explorer_log.debug("subscribe error topic:%s" % topic)
-                return -1, None
-        # topic format [(topic1, qos),(topic2,qos)]
-        if isinstance(topic, list):
-            self.__user_topics_request_lock.acquire()
-            sub_res, mid = self.__mqtt_client.subscribe(topic)
-            if sub_res == mqtt.MQTT_ERR_SUCCESS:
-                self.__user_topics_subscribe_request[mid] = [topic]
-                self.__user_topics_request_lock.release()
-                return 0, mid
-            else:
-                self.__user_topics_request_lock.release()
-                return 1, mid
-        pass
+        return self.__hub.subscribe(topic, qos)
 
     def unsubscribe(self, topic):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
-        unsubscribe_topics = []
-        if topic is None or topic == "":
-            raise ValueError('Invalid topic.')
-        if isinstance(topic, str):
-            # topic判断
-            unsubscribe_topics.append(topic)
-        with self.__user_topics_unsubscribe_request_lock:
-            if len(unsubscribe_topics) == 0:
-                return 2, None
-            rc, mid = self.__mqtt_client.unsubscribe(unsubscribe_topics)
-            if rc == mqtt.MQTT_ERR_SUCCESS:
-                self.__user_topics_unsubscribe_request[mid] = unsubscribe_topics
-                return 0, mid
-            else:
-                return 1, None
-        pass
+        return self.__hub.unsubscribe(topic)
 
     def publish(self, topic, payload, qos):
-        self.__explorer_log.debug("pub topic:%s,payload:%s,qos:%d" % (topic, payload, qos))
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
-        if topic is None or len(topic) == 0:
-            raise ValueError('Invalid topic.')
-        if qos < 0:
-            raise ValueError('Invalid QoS level.')
-        rc, mid = self.__mqtt_client.publish(topic, json.dumps(payload), qos)
-        if rc == mqtt.MQTT_ERR_SUCCESS:
-            self.__explorer_log.debug("publish success")
-            return 0, mid
-        else:
-            self.__explorer_log.debug("publish failed")
-            return 1, None
-        pass
+        return self.__hub.publish(topic, payload, qos)
 
     def isMqttConnected(self):
-        if self.__explorer_state is QcloudHub.HubState.CONNECTED:
-            return True
-        else:
-            return False
+        return self.__hub.isMqttConnected()
 
     def getConnectStatus(self):
         return self.__explorer_state
 
-    def mqttInit(self, mqtt_domain, useWebsocket=False):
-        self.__explorer_log.debug("mqttInit")
-        timestamp = str(int(round(time.time() * 1000)))
-
-        auth_mode = self.__device_file.auth_mode
-        device_name = self.__device_file.device_name
-        product_id = self.__device_file.product_id
-        device_secret = self.__device_file.device_secret
-        if auth_mode == "CERT":
-            self.__key_mode = False
-
-        self.__useWebsocket = useWebsocket
-
-        self.__topic_info = QcloudHub.Topic(product_id, device_name)
-
-        self.__psk = base64.b64decode(device_secret.encode("utf-8"))
-        self.__psk_id = product_id + device_name
-        sha1_key = self.__psk
-
-        client_id = product_id + device_name
-        conn_id = ''.join(random.sample(string.ascii_letters + string.digits, 5))
-        username = client_id + ";21010406;" + conn_id + ";" + timestamp
-        sign = hmac.new(sha1_key, username.encode("utf-8"), hashlib.sha1).hexdigest()
-        password = "%s;hmacsha1" % (sign)
-
-        if mqtt_domain is None or mqtt_domain == "":
-            self.__host = product_id + ".iotcloud.tencentdevices.com"
-        else:
-            self.__host = product_id + mqtt_domain
-        pass
-
-        # c-sdk中sub_handles的设置待完成
-
-        # AUTH_MODE_CERT 待添加
-
-        # construct mqtt client
-        mqtt_protocol_version = mqtt.MQTTv311
-        if self.__mqtt_protocol == "MQTTv311":
-            mqtt_protocol_version = mqtt.MQTTv311
-        elif self.__mqtt_protocol == "MQTTv31":
-            mqtt_protocol_version = mqtt.MQTTv31
-
-        if self.__useWebsocket:
-            if self.__tls:
-                self.__host = "wss:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
-            else:
-                self.__host = "ws:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
-            pass
-
-            self.__mqtt_client = mqtt.Client(client_id=client_id,
-                                             clean_session=self.__mqtt_clean_session,
-                                             protocol=mqtt_protocol_version,
-                                             transport="websockets")
-        else:
-            self.__mqtt_client = mqtt.Client(client_id=client_id,
-                                             clean_session=self.__mqtt_clean_session,
-                                             protocol=mqtt_protocol_version)
-
-        self.__explorer_log.debug("current_host: %s" % self.__host)
-        if self.__explorer_log.is_enabled():
-            self.__mqtt_client.enable_logger(self.__PahoLog)
-
-        # set username,password for connect()
-        self.__mqtt_client.username_pw_set(username, password)
-
-        # mqtt callback set
-        self.__set_mqtt_callback()
-
-        self.__mqtt_client.reconnect_delay_set(self.__mqtt_auto_reconnect_min_sec, self.__mqtt_auto_reconnect_max_sec)
-        self.__mqtt_client.max_queued_messages_set(self.__mqtt_max_queued_message)
-        self.__mqtt_client.max_inflight_messages_set(self.__mqtt_max_inflight_message)
+    def protocolInit(self, domain=None, useWebsocket=False):
+        return self.__hub.protocolInit(domain, useWebsocket)
 
     # start thread to connect and loop
     def connect(self):
-        if self.__explorer_state not in (QcloudHub.HubState.INITIALIZED,
-                                         QcloudHub.HubState.DISCONNECTED):
-            raise QcloudHub.StateError("current state is not in INITIALIZED or DISCONNECTED")
-        self.__connect_async_req = True
-        with self.__worker_loop_exit_req_lock:
-            self.__worker_loop_exit_req = False
-        return self.__loop_thread.start(self.__loop_forever)
-
-    def __ssl_init(self, key_mode):
-        # 密钥认证
-        if key_mode is True:
-            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
-            self.__mqtt_client.tls_set_context(context)
-        else:
-            ca = self.__device_file.ca_file
-            cert = self.__device_file.cert_file
-            key = self.__device_file.private_key_file
-            self.__mqtt_client.tls_set(ca_certs=ca, certfile=cert, keyfile=key,
-                                    cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_SSLv23)
-        pass
+        return self.__hub.connect()
 
     def disconnect(self):
-        self.__explorer_log.debug("disconnect")
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
-        self.__explorer_state = QcloudHub.HubState.DISCONNECTING
-        if self.__connect_async_req:
-            with self.__worker_loop_exit_req_lock:
-                self.__worker_loop_exit_req = True
-
-        self.__mqtt_client.disconnect()
-        self.__loop_thread.stop()
-
-    def __on_connect(self, client, user_data, session_flag, rc):
-        # self.__explorer_log.info("__on_connect:rc:%d" % (rc))
-        if rc == 0:
-            self.__reset_reconnect_wait()
-            self.__explorer_state = QcloudHub.HubState.CONNECTED
-
-            self.__user_thread.post_message(self.__user_cmd_on_connect, (session_flag, rc))
-
-            sys_topic_sub = self.__topic_info.sys_topic_sub
-            sys_topic_pub = self.__topic_info.sys_topic_pub
-            qos = 0
-            sub_res, mid = self.subscribe(sys_topic_sub, qos)
-            # should deal mid
-            self.__explorer_log.debug("mid:%d" % mid)
-            if sub_res == 0:
-                payload = {
-                    "type": "get",
-                    "resource": [
-                        "time"
-                    ],
-                }
-                self.publish(sys_topic_pub, payload, qos)
-            else:
-                self.__explorer_log.error("topic_subscribe error:rc:%d" % (sub_res))
-        pass
-
-    def __on_disconnect(self, client, user_data, rc):
-        self.__explorer_log.info("__on_disconnect,rc:%d" % (rc))
-
-        if self.__explorer_state == QcloudHub.HubState.DISCONNECTING:
-            self.__explorer_state = QcloudHub.HubState.DISCONNECTED
-        elif self.__explorer_state == QcloudHub.HubState.DESTRUCTING:
-            self.__explorer_state = QcloudHub.HubState.DESTRUCTED
-        elif self.__explorer_state == QcloudHub.HubState.CONNECTED:
-            self.__explorer_state = QcloudHub.HubState.DISCONNECTED
-        else:
-            self.__explorer_log.error("state error:%r" % self.__explorer_state)
-            return
-
-        self.__user_topics_subscribe_request.clear()
-        self.__user_topics_unsubscribe_request.clear()
-        self.__template_prop_report_reply_mid.clear()
-        self.__user_topics.clear()
-        self.__gateway_session_online_reply.clear()
-        self.__gateway_session_offline_reply.clear()
-        self.__gateway_session_bind_reply.clear()
-        self.__gateway_session_unbind_reply.clear()
-        self.__on_gateway_subdev_prop_cb_dict.clear()
-        self.__on_gateway_subdev_action_cb_dict.clear()
-        self.__on_gateway_subdev_event_cb_dict.clear()
-
-        # self.__user_thread.post_message(self.__user_cmd_on_disconnect, (client, user_data, rc))
-        self.__user_thread.post_message(self.__user_cmd_on_disconnect, (rc))
-        if self.__explorer_state == QcloudHub.HubState.DESTRUCTED:
-            self.__user_thread.stop()
-    pass
-
-    def __on_message(self, client, user_data, message):
-        self.__user_thread.post_message(self.__user_cmd_on_message, (message))
-    pass
-
-    def __on_publish(self, client, user_data, mid):
-        # self.__user_thread.post_message(self.__user_cmd_on_publish, (client, user_data, mid))
-        self.__user_thread.post_message(self.__user_cmd_on_publish, (mid))
-    pass
-
-    def __on_subscribe(self, client, user_data, mid, granted_qos):
-        # self.__explorer_log.info("__on_subscribe:user_data:%s,mid:%d,qos:%s" % (user_data, mid, granted_qos))
-        qos = granted_qos[0]
-        # __ota_subscribe_res可以用于所有订阅,mid必不相同
-        self.__ota_subscribe_res[mid] = qos
-        self.__user_thread.post_message(self.__user_cmd_on_subscribe, (qos, mid))
-
-    pass
-
-    def __on_unsubscribe(self, client, user_data, mid):
-        self.__user_thread.post_message(self.__user_cmd_on_unsubscribe, (mid))
-
-    pass
-
-    # user callback
-    def __user_thread_on_connect_callback(self, value):
-        # client, user_data, session_flag, rc = value
-        session_flag, rc = value
-        if self.__user_on_connect is not None:
-            try:
-                self.__user_on_connect(session_flag['session present'], rc, self.__user_data)
-            except Exception as e:
-                self.__explorer_log.error("on_connect process raise exception:%r" % e)
-        pass
-
-    def __user_thread_on_disconnect_callback(self, value):
-        self.__user_on_disconnect(value, self.__user_data)
-        pass
-
-    def __user_thread_on_publish_callback(self, value):
-        self.__user_on_publish(value, self.__user_data)
-        pass
-
-    def __user_thread_on_subscribe_callback(self, value):
-        qos, mid = value
-        self.__user_on_subscribe(qos, mid, self.__user_data)
-        pass
-
-    def __user_thread_on_unsubscribe_callback(self, value):
-        self.__user_on_unsubscribe(value, self.__user_data)
-        pass
-
-    #云端下发指令
-    def __user_thread_on_message_callback(self, value):
-        # client, user_data, message = value
-        message = value
-        topic = message.topic
-        qos = message.qos
-        mid = message.mid
-        payload = json.loads(message.payload.decode('utf-8'))
-
-        # self.__explorer_log.info("__user_thread_on_message_callback,topic:%s,payload:%s,mid:%d" % (topic, payload, mid))
-
-        if topic == self.__topic_info.template_property_topic_sub:
-            method = payload["method"]
-            if method == "control":
-                self.__handle_control(payload)
-            else:
-                self.__handle_reply(method, payload)
-
-        elif topic == self.__topic_info.template_event_topic_sub:
-            try:
-                self.__on_template_event_post(payload, self.__user_data)
-            except Exception as e:
-                self.__explorer_log.error("on_template_event_post raise exception:%s" % e)
-            pass
-
-        elif topic == self.__topic_info.template_action_topic_sub:
-            method = payload["method"]
-
-            if method != "action":
-                self.__explorer_log.error("method error:%s" % method)
-            else:
-                self.__handle_action(payload)
-            pass
-
-        elif topic == self.__topic_info.template_service_topic_sub:
-            self.__explorer_log.info("--------Reserved: template service topic")
-
-            try:
-                self.__on_subscribe_service_post(payload, self.__user_data)
-            except Exception as e:
-                self.__explorer_log.error("__on_subscribe_service_post raise exception:%s" % e)
-            pass
-
-        elif topic == self.__topic_info.template_raw_topic_sub:
-            self.__explorer_log.info("Reserved: template raw topic")
-
-        elif topic in self.__user_topics and self.__user_on_message is not None:
-            try:
-                self.__user_on_message(topic, payload, qos, self.__user_data)
-            except Exception as e:
-                self.__explorer_log.error("user_on_message process raise exception:%s" % e)
-            pass
-        elif topic == self.__topic_info.template_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__user_data)
-        elif topic == self.__topic_info.sys_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__user_data)
-        elif topic == self.__topic_info.gateway_topic_sub:
-            self.__handle_gateway(payload)
-        elif topic == self.__topic_info.ota_update_topic_sub:
-            self.__handle_ota(payload)
-        elif self.__topic_info.rrpc_topic_sub_prefix in topic:
-            self.__handle_rrpc(topic, payload)
-        elif self.__topic_info.shadow_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__user_data)
-        elif self.__topic_info.broadcast_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__user_data)
-        else:
-            rc = self.__handle_nonStandard_topic(topic, payload)
-            if rc != 0:
-                self.__explorer_log.error("unknow topic:%s" % topic)
-        pass
-
-    def __reconnect_wait(self):
-        if self.__mqtt_auto_reconnect_sec == 0:
-            self.__mqtt_auto_reconnect_sec = self.__mqtt_auto_reconnect_min_sec
-        else:
-            self.__mqtt_auto_reconnect_sec = min(self.__mqtt_auto_reconnect_sec * 2, self.__mqtt_auto_reconnect_max_sec)
-            self.__mqtt_auto_reconnect_sec += random.randint(1, self.__mqtt_auto_reconnect_sec)
-        time.sleep(self.__mqtt_auto_reconnect_sec)
-        pass
-
-    def __reset_reconnect_wait(self):
-        self.__mqtt_auto_reconnect_sec = 0
-
-    def __loop_forever(self):
-        self.__explorer_log.info("__loop_forever")
-        self.__explorer_state = QcloudHub.HubState.CONNECTING
-
-        mqtt_port = self.__mqtt_tls_port
-        if self.__tls:
-            try:
-                mqtt_port = self.__mqtt_tls_port
-
-                if self.__useWebsocket:
-                    mqtt_port = self.__mqtt_socket_tls_port
-                    pass
-
-                self.__ssl_init(self.__key_mode)
-            except ssl.SSLError as e:
-                self.__explorer_log.error("ssl init error:" + str(e))
-                self.__explorer_state = QcloudHub.HubState.INITIALIZED
-                # connect again 待添加
-
-                return
-        else:
-            mqtt_port = self.__mqtt_tcp_port
-
-            if self.__useWebsocket:
-                mqtt_port = self.__mqtt_socket_tcp_port
-                pass
-
-        try:
-            self.__explorer_log.debug("connect_async...%s", mqtt_port)
-            self.__mqtt_client.connect_async(host=self.__host, port=mqtt_port, keepalive=self.__mqtt_keep_alive)
-        except Exception as e:
-            self.__explorer_log.error("mqtt connect with async error:" + str(e))
-            self.__explorer_state = QcloudHub.HubState.INITIALIZED
-            # connect again 待添加
-
-            return
-        while True:
-            if self.__worker_loop_exit_req:
-                if self.__explorer_state == QcloudHub.HubState.DESTRUCTING:
-                    # self.__handler_task.stop()
-                    self.__explorer_state = QcloudHub.HubState.DESTRUCTED
-                break
-            try:
-                self.__explorer_state = QcloudHub.HubState.CONNECTING
-                self.__mqtt_client.reconnect()
-            except (socket.error, OSError) as e:
-                self.__explorer_log.error("mqtt reconnect error:" + str(e))
-                # 失败处理 待添加
-                if self.__explorer_state == QcloudHub.HubState.CONNECTING:
-                    self.__explorer_state = QcloudHub.HubState.DISCONNECTED
-                    # self.__on__connect_safe(None, None, 0, 9)
-                    if self.__explorer_state == QcloudHub.HubState.DESTRUCTING:
-                        # self.__handler_task.stop()
-                        self.__explorer_state = QcloudHub.HubState.DESTRUCTED
-                        break
-                    self.__reconnect_wait()
-
-                continue
-
-            rc = mqtt.MQTT_ERR_SUCCESS
-            while rc == mqtt.MQTT_ERR_SUCCESS:
-                rc = self.__mqtt_client.loop(self.__mqtt_command_timeout, 1)
+        self.__hub.disconnect()
 
     # data template
     def __build_empty_json(self, info_in, method_in):
@@ -1024,7 +445,7 @@ QVrcRBDxzx/G\n\
         return json_out
 
     def __build_control_reply(self, replyPara):
-        token = self.__topic_info.control_clientToken
+        token = self.__topic.control_clientToken
 
         json_out = None
         if len(replyPara.status_msg) > 0:
@@ -1082,7 +503,7 @@ QVrcRBDxzx/G\n\
                     # 解析events json
                     params = cfg["events"][index]["params"]
 
-                    p_event = QcloudHub.template_event()
+                    p_event = self.__hub.template_event()
 
                     p_event.event_name = cfg["events"][index]["id"]
                     p_event.type = cfg["events"][index]["type"]
@@ -1091,7 +512,7 @@ QVrcRBDxzx/G\n\
 
                     i = 0
                     while i < p_event.eventDataNum:
-                        event_prop = QcloudHub.template_property()
+                        event_prop = self.__hub.template_property()
                         event_prop.key = params[i]["id"]
                         event_prop.type = params[i]["define"]["type"]
 
@@ -1102,7 +523,7 @@ QVrcRBDxzx/G\n\
                         elif event_prop.type == "string":
                             event_prop.data = ''
                         else:
-                            self.__explorer_log.error("type not support")
+                            self.__logger.error("type not support")
                             event_prop.data = None
 
                         p_event.event_append(event_prop)
@@ -1125,7 +546,7 @@ QVrcRBDxzx/G\n\
                     inputs = cfg["actions"][index]["input"]
                     outputs = cfg["actions"][index]["output"]
 
-                    p_action = QcloudHub.template_action()
+                    p_action = self.__hub.template_action()
                     p_action.action_id = cfg["actions"][index]["id"]
                     p_action.input_num = len(inputs)
                     p_action.output_num = len(outputs)
@@ -1133,7 +554,7 @@ QVrcRBDxzx/G\n\
 
                     i = 0
                     while i < p_action.input_num:
-                        action_prop = QcloudHub.template_property()
+                        action_prop = self.__hub.template_property()
                         action_prop.key = inputs[i]["id"]
                         action_prop.type = inputs[i]["define"]["type"]
 
@@ -1144,7 +565,7 @@ QVrcRBDxzx/G\n\
                         elif action_prop.type == "string":
                             action_prop.data = ''
                         else:
-                            self.__explorer_log.error("type not support")
+                            self.__logger.error("type not support")
                             action_prop.data = None
                         p_action.action_input_append(action_prop)
                         i += 1
@@ -1152,7 +573,7 @@ QVrcRBDxzx/G\n\
 
                     i = 0
                     while i < p_action.output_num:
-                        action_prop = QcloudHub.template_property()
+                        action_prop = self.__hub.template_property()
                         action_prop.key = outputs[i]["id"]
                         action_prop.type = outputs[i]["define"]["type"]
 
@@ -1163,7 +584,7 @@ QVrcRBDxzx/G\n\
                         elif action_prop.type == "string":
                             action_prop.data = ''
                         else:
-                            self.__explorer_log.error("type not support")
+                            self.__logger.error("type not support")
                             action_prop.data = None
                         p_action.action_output_append(action_prop)
                         i += 1
@@ -1187,7 +608,7 @@ QVrcRBDxzx/G\n\
                 index = 0
                 while index < len(cfg["properties"]):
                     # 解析properties json
-                    p_prop = QcloudHub.template_property()
+                    p_prop = self.__hub.template_property()
                     p_prop.key = cfg["properties"][index]["id"]
                     p_prop.type = cfg["properties"][index]["define"]["type"]
 
@@ -1198,7 +619,7 @@ QVrcRBDxzx/G\n\
                     elif p_prop.type == "string":
                         p_prop.data = ''
                     else:
-                        self.__explorer_log.error("type not support")
+                        self.__logger.error("type not support")
                         p_prop.data = None
 
                     self.template_property_list.append(p_prop)
@@ -1211,15 +632,15 @@ QVrcRBDxzx/G\n\
                 '''
 
         except Exception as e:
-            self.__explorer_log.error("config file open error:" + str(e))
+            self.__logger.error("config file open error:" + str(e))
             return 2
         self.__template_setup_state = True
         return 0
 
     # 暂定传入json格式
     def templateEventPost(self, message):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
         if message is None or len(message) == 0:
             raise ValueError('Invalid message.')
 
@@ -1232,10 +653,10 @@ QVrcRBDxzx/G\n\
             "events": events
         }
 
-        template_topic_pub = self.__topic_info.template_event_topic_pub
+        template_topic_pub = self.__topic.template_event_topic_pub
         rc, mid = self.publish(template_topic_pub, json_out, 1)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
             return 2
         else:
@@ -1243,24 +664,26 @@ QVrcRBDxzx/G\n\
         pass
 
     def __template_event_init(self):
-        template_topic_sub = self.__topic_info.template_event_topic_sub
+        template_topic_sub = self.__topic.template_event_topic_sub
+        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_event)
         sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
         pass
 
     def __template_action_init(self):
-        template_topic_sub = self.__topic_info.template_action_topic_sub
+        template_topic_sub = self.__topic.template_action_topic_sub
+        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_action)
         sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
@@ -1284,51 +707,51 @@ QVrcRBDxzx/G\n\
         return json_out
 
     def templateReportSysInfo(self, sysinfo):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
         if sysinfo is None or len(sysinfo) == 0:
             raise ValueError('Invalid sysinfo.')
 
-        template_topic_pub = self.__topic_info.template_property_topic_pub
+        template_topic_pub = self.__topic.template_property_topic_pub
         rc, json_out = self.__json_construct_sysinfo(sysinfo)
         if rc != 0:
-            self.__explorer_log.error("__json_construct_sysinfo error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("__json_construct_sysinfo error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 1
         rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
         return 0
 
     def templateControlReply(self, replyPara):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic_info.template_property_topic_pub
+        template_topic_pub = self.__topic.template_property_topic_pub
         json_out = self.__build_control_reply(replyPara)
         rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
         else:
             return 0
         pass
 
     def templateActionReply(self, clientToken, response, replyPara):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic_info.template_action_topic_pub
+        template_topic_pub = self.__topic.template_action_topic_pub
         json_out = self.__build_action_reply(clientToken, response, replyPara)
         rc, mid = self.publish(template_topic_pub, json_out, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
         else:
             return 0
@@ -1336,58 +759,60 @@ QVrcRBDxzx/G\n\
 
     # 回调中处理IOT_Template_ClearControl
     def templateGetStatus(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic_info.template_property_topic_pub
+        template_topic_pub = self.__topic.template_property_topic_pub
 
         token = self.__build_empty_json(self.__device_file.product_id, "get_status")
         rc, mid = self.publish(template_topic_pub, token, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
         else:
             return 0
         pass
 
     def templateReport(self, message):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
         if message is None or len(message) == 0:
             raise ValueError('Invalid message.')
         # 判断下行topic是否订阅
         if self.__is_subscribed_property_topic is False:
-            template_topic_sub = self.__topic_info.template_property_topic_sub
+            template_topic_sub = self.__topic.template_property_topic_sub
             sub_res, mid = self.subscribe(template_topic_sub, 0)
             # should deal mid
-            self.__explorer_log.debug("mid:%d" % mid)
+            self.__logger.debug("mid:%d" % mid)
             if sub_res != 0:
-                self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+                self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
                 return 1
             self.__is_subscribed_property_topic = True
             pass
 
-        template_topic_pub = self.__topic_info.template_property_topic_pub
+        template_topic_pub = self.__topic.template_property_topic_pub
         rc, mid = self.publish(template_topic_pub, message, 0)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
             return 2
         else:
             return 0
         pass
 
     def templateInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_sub = self.__topic_info.template_property_topic_sub
+        template_topic_sub = self.__topic.template_property_topic_sub
+        # 向hub层注册property的处理函数
+        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_property)
         sub_res, mid = self.subscribe(template_topic_sub, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
         self.__is_subscribed_property_topic = True
@@ -1400,8 +825,8 @@ QVrcRBDxzx/G\n\
         return 0
 
     def clearControl(self):
-        topic_pub = self.__topic_info.template_property_topic_pub
-        clientToken = self.__topic_info.control_clientToken
+        topic_pub = self.__topic.template_property_topic_pub
+        clientToken = self.__topic.control_clientToken
 
         # IOT_Template_ClearControl
         message = {
@@ -1410,41 +835,41 @@ QVrcRBDxzx/G\n\
         }
         rc, mid = self.publish(topic_pub, message, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
         pass
 
     def templateDeinit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
 
-        template_topic_sub = self.__topic_info.template_property_topic_sub
+        template_topic_sub = self.__topic.template_property_topic_sub
         sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
         self.__is_subscribed_property_topic = False
 
         
-        template_topic_sub = self.__topic_info.template_event_topic_sub
+        template_topic_sub = self.__topic.template_event_topic_sub
         sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
 
-        template_topic_sub = self.__topic_info.template_action_topic_sub
+        template_topic_sub = self.__topic.template_action_topic_sub
         sub_res, mid = self.unsubscribe(template_topic_sub)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
             return 1
         else:
             return 0
@@ -1468,9 +893,9 @@ QVrcRBDxzx/G\n\
         # 网关子设备数据模板
         sub_res, mid = self.subscribe(topic_prop, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_prop))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_prop))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1481,9 +906,9 @@ QVrcRBDxzx/G\n\
 
         sub_res, mid = self.subscribe(topic_action, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_action))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_action))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1494,9 +919,9 @@ QVrcRBDxzx/G\n\
 
         sub_res, mid = self.subscribe(topic_event, 0)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_event))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_event))
             return 1
         else:
             # 将product id和topic对加到列表保存
@@ -1507,246 +932,9 @@ QVrcRBDxzx/G\n\
 
         return 0
 
-    def __wait_for_session_reply(self, client_id, session):
-        if client_id is None or len(client_id) == 0:
-            raise ValueError('Invalid client_id.')
-        if session is None or len(session) == 0:
-            raise ValueError('Invalid session.')
-
-        if session == "online":
-            cnt = 0
-            while cnt < 3:
-                with self.__gateway_session_online_lock:
-                    if client_id in self.__gateway_session_online_reply:
-                        if self.__gateway_session_online_reply[client_id] == 0:
-                            self.__gateway_session_online_reply.pop(client_id)
-                            return 0
-                        else:
-                            break
-                pass
-                time.sleep(0.2)
-                cnt += 1
-            return 1
-        elif session == "offline":
-            cnt = 0
-            while cnt < 3:
-                with self.__gateway_session_offline_lock:
-                    if client_id in self.__gateway_session_offline_reply:
-                        if self.__gateway_session_offline_reply[client_id] == 0:
-                            self.__gateway_session_offline_reply.pop(client_id)
-                            return 0
-                        else:
-                            break
-                pass
-                time.sleep(0.2)
-                cnt += 1
-            return 1
-        elif session == "bind":
-            cnt = 0
-            while cnt < 3:
-                with self.__gateway_session_bind_lock:
-                    if client_id in self.__gateway_session_bind_reply:
-                        if self.__gateway_session_bind_reply[client_id] == 0:
-                            self.__gateway_session_bind_reply.pop(client_id)
-                            return 0
-                        else:
-                            break
-                pass
-                time.sleep(0.2)
-                cnt += 1
-            return 1
-        elif session == "unbind":
-            cnt = 0
-            while cnt < 3:
-                with self.__gateway_session_unbind_lock:
-                    if client_id in self.__gateway_session_unbind_reply:
-                        if self.__gateway_session_unbind_reply[client_id] == 0:
-                            self.__gateway_session_unbind_reply.pop(client_id)
-                            return 0
-                        else:
-                            break
-                pass
-                time.sleep(0.2)
-                cnt += 1
-            return 1
-        pass
-
-    def __build_session_payload(self, ptype, pid, name, bind_secret):
-        if ptype == "online" or ptype == "offline" or ptype == "unbind":
-            payload = {
-                "type": ptype,
-                "payload": {
-                    "devices": [
-                        {
-                            "product_id": pid,
-                            "device_name": name
-                        }
-                    ]
-                }
-            }
-        elif ptype == "bind":
-            nonce = random.randrange(2147483647)
-            timestamp = int(time.time())
-            sign_format = '%s%s;%d;%d'
-            sign_content = sign_format % (pid, name, nonce, timestamp)
-
-            # 计算二进制
-            sign = hmac.new(bind_secret.encode("utf-8"), sign_content.encode("utf-8"), hashlib.sha1).digest()
-            sign_base64 = base64.b64encode(sign).decode('utf-8')
-
-            self.__explorer_log.debug('sign base64 {}'.format(sign_base64))
-            payload = {
-                "type": ptype,
-                "payload": {
-                    "devices": [{
-                        "product_id": pid,
-                        "device_name": name,
-                        "signature": sign_base64,
-                        "random": nonce,
-                        "timestamp": timestamp,
-                        "signmethod": "hmacsha1",
-                        "authtype": "psk"
-                    }]
-                }
-            }
-        pass
-
-        return payload
-
-    def gatewayInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
-
-        # 解析网关子设备信息,并添加到list
-        json_data = self.__device_file.json_data
-        subdev_num = json_data['subDev']['subdev_num']
-        subdev_list = json_data['subDev']['subdev_list']
-
-        index = 0
-        while index < subdev_num:
-            p_subdev = QcloudHub.gateway_subdev()
-            p_subdev.sub_productId = subdev_list[index]['sub_productId']
-            p_subdev.sub_devName = subdev_list[index]['sub_devName']
-            p_subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_INIT
-
-            self.gateway_subdev_list.append(p_subdev)
-            index += 1
-
-        gateway_topic_sub = self.__topic_info.gateway_topic_sub
-        sub_res, mid = self.subscribe(gateway_topic_sub, 0)
-        # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, gateway_topic_sub))
-            return 1
-        return 0
-
-    def gatewaySubdevOnline(self, sub_productId, sub_devName):
-        if sub_productId is None or len(sub_productId) == 0:
-            raise ValueError('Invalid sub_productId.')
-        if sub_devName is None or len(sub_devName) == 0:
-            raise ValueError('Invalid sub_devName.')
-
-        # 保存当前会话的设备client_id
-        # self.__gateway_session_client_id = sub_productId + "/" + sub_devName
-        client_id = sub_productId + "/" + sub_devName
-
-        gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload("online", sub_productId, sub_devName, None)
-
-        rc, mid = self.publish(gateway_topic_pub, payload, 0)
-        if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
-            return 2
-
-        rc = self.__wait_for_session_reply(client_id, "online")
-        if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, "online"))
-        else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, "online"))
-
-        return rc
-
-    def gatewaySubdevOffline(self, sub_productId, sub_devName):
-        if sub_productId is None or len(sub_productId) == 0:
-            raise ValueError('Invalid sub_productId.')
-        if sub_devName is None or len(sub_devName) == 0:
-            raise ValueError('Invalid sub_devName.')
-
-        # 保存当前会话的设备client_id
-        # self.__gateway_session_client_id = sub_productId + "/" + sub_devName
-        client_id = sub_productId + "/" + sub_devName
-
-        gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload("offline", sub_productId, sub_devName, None)
-
-        rc, mid = self.publish(gateway_topic_pub, payload, 0)
-        if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
-            return 2
-
-        rc = self.__wait_for_session_reply(client_id, "offline")
-        if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, "offline"))
-        else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, "offline"))
-
-        return rc
-
-    def gatewaySubdevBind(self, sub_productId, sub_devName, sub_secret):
-        if sub_productId is None or len(sub_productId) == 0:
-            raise ValueError('Invalid sub_productId.')
-        if sub_devName is None or len(sub_devName) == 0:
-            raise ValueError('Invalid sub_devName.')
-
-        if sub_secret is None or len(sub_secret) == 0:
-            raise ValueError('Invalid sub_secret.')
-
-        client_id = sub_productId + "/" + sub_devName
-
-        gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload("bind", sub_productId, sub_devName, sub_secret)
-
-        rc, mid = self.publish(gateway_topic_pub, payload, 0)
-        if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
-            return 2
-
-        rc = self.__wait_for_session_reply(client_id, "bind")
-        if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, "bind"))
-        else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, "bind"))
-
-        return rc
-    
-    def gatewaySubdevUnbind(self, sub_productId, sub_devName, sub_secret):
-        if sub_productId is None or len(sub_productId) == 0:
-            raise ValueError('Invalid sub_productId.')
-        if sub_devName is None or len(sub_devName) == 0:
-            raise ValueError('Invalid sub_devName.')
-
-        client_id = sub_productId + "/" + sub_devName
-
-        gateway_topic_pub = self.__topic_info.gateway_topic_pub
-        payload = self.__build_session_payload("unbind", sub_productId, sub_devName, None)
-
-        rc, mid = self.publish(gateway_topic_pub, payload, 0)
-        if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, gateway_topic_pub))
-            return 2
-
-        rc = self.__wait_for_session_reply(client_id, "unbind")
-        if rc == 0:
-            self.__explorer_log.debug("client:%s %s success" % (client_id, "unbind"))
-        else:
-            self.__explorer_log.debug("client:%s %s fail" % (client_id, "unbind"))
-
-        return rc
-
     # ota
     def __ota_publish(self, message, qos):
-        topic = self.__topic_info.ota_report_topic_pub
+        topic = self.__topic.ota_report_topic_pub
         rc, mid = self.publish(topic, message, qos)
         return rc, mid
 
@@ -1773,19 +961,19 @@ QVrcRBDxzx/G\n\
         if md5sum is not None and len(md5sum) > 0:
             self.__ota_manager.md5sum = md5sum
 
-        self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_FETCHING
+        self.__ota_manager.state = self.__hub.OtaState.IOT_OTAS_FETCHING
 
     def otaInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        self.__ota_manager = QcloudHub.ota_manage()
-        self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_UNINITED
+        self.__ota_manager = self.__hub.ota_manage()
+        self.__ota_manager.state = self.__hub.OtaState.IOT_OTAS_UNINITED
 
-        ota_topic_sub = self.__topic_info.ota_update_topic_sub
+        ota_topic_sub = self.__topic.ota_update_topic_sub
         sub_res, mid = self.subscribe(ota_topic_sub, 1)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, ota_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, ota_topic_sub))
             return 1
 
         cnt = 0
@@ -1801,17 +989,17 @@ QVrcRBDxzx/G\n\
         if cnt >= 10:
             return 1
 
-        self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_INITED
+        self.__ota_manager.state = self.__hub.OtaState.IOT_OTAS_INITED
         self.__ota_manager.md5 = hashlib.md5()
 
         return 0
 
     # 是否应将ota句柄传入(支持多个下载进程?)
     def otaIsFetching(self):
-        return (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_FETCHING)
+        return (self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_FETCHING)
 
     def otaIsFetchFinished(self):
-        return (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_FETCHED)
+        return (self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_FETCHED)
 
     def __message_splice(self, state, progress, result_code, result_msg, version, ptype):
         message = None
@@ -1846,102 +1034,102 @@ QVrcRBDxzx/G\n\
 
     def __ota_gen_report_msg(self, version, progress, report_type):
         message = None
-        if report_type == QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_BEGIN:
+        if report_type == self.__hub.OtaReportType.IOT_OTAR_DOWNLOAD_BEGIN:
             message = self.__message_splice("downloading", 0, 0, "", version, 1)
-        elif report_type == QcloudHub.OtaReportType.IOT_OTAR_DOWNLOADING:
+        elif report_type == self.__hub.OtaReportType.IOT_OTAR_DOWNLOADING:
             message = self.__message_splice("downloading", progress, 0, "", version, 1)
-        elif ((report_type == QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
-                or (report_type == QcloudHub.OtaReportType.IOT_OTAR_FILE_NOT_EXIST)
-                or (report_type == QcloudHub.OtaReportType.IOT_OTAR_MD5_NOT_MATCH)
-                or (report_type == QcloudHub.OtaReportType.IOT_OTAR_AUTH_FAIL)
-                or (report_type == QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)):
+        elif ((report_type == self.__hub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
+                or (report_type == self.__hub.OtaReportType.IOT_OTAR_FILE_NOT_EXIST)
+                or (report_type == self.__hub.OtaReportType.IOT_OTAR_MD5_NOT_MATCH)
+                or (report_type == self.__hub.OtaReportType.IOT_OTAR_AUTH_FAIL)
+                or (report_type == self.__hub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)):
             message = self.__message_splice("fail", progress, report_type, "time_out", version, 0)
-        elif report_type == QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_BEGIN:
+        elif report_type == self.__hub.OtaReportType.IOT_OTAR_UPGRADE_BEGIN:
             message = self.__message_splice("burning", progress, 0, "", version, 0)
-        elif report_type == QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS:
+        elif report_type == self.__hub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS:
             message = self.__message_splice("done", progress, 0, "", version, 0)
         else:
-            self.__explorer_log.error("not support report_type:%d" % report_type)
+            self.__logger.error("not support report_type:%d" % report_type)
             message = None
 
         return message
 
     def _ota_report_upgrade_result(self, version, report_type):
-        if self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED:
+        if self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_UNINITED:
             raise ValueError('ota handle is uninitialized')
         message = self.__ota_gen_report_msg(version, 1, report_type)
         if message is not None:
             return self.__ota_publish(message, 1)
         else:
-            self.__explorer_log.error("message is none")
+            self.__logger.error("message is none")
             return 1, -1
 
     def _ota_report_progress(self, progress, version, report_type):
-        if self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED:
+        if self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_UNINITED:
             raise ValueError('ota handle is uninitialized')
         message = self.__ota_gen_report_msg(version, progress, report_type)
         if message is not None:
             return self.__ota_publish(message, 0)
         else:
-            self.__explorer_log.error("message is none")
+            self.__logger.error("message is none")
             return 3
 
     def otaReportUpgradeSuccess(self, version):
         if version is None:
             rc, mid = self._ota_report_upgrade_result(self.__ota_manager.version,
-                                                     QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
+                                                     self.__hub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
         else:
-            rc, mid = self._ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
+            rc, mid = self._ota_report_upgrade_result(version, self.__hub.OtaReportType.IOT_OTAR_UPGRADE_SUCCESS)
         if rc != 0:
-            self.__explorer_log.error("ota_report_upgrade_success fail")
+            self.__logger.error("ota_report_upgrade_success fail")
             return -1
         return mid
 
     def otaReportUpgradeFail(self, version):
         if version is None:
             rc, mid = self._ota_report_upgrade_result(self.__ota_manager.version,
-                                                     QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
+                                                     self.__hub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
         else:
-            rc, mid = self._ota_report_upgrade_result(version, QcloudHub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
+            rc, mid = self._ota_report_upgrade_result(version, self.__hub.OtaReportType.IOT_OTAR_UPGRADE_FAIL)
         if rc != 0:
-            self.__explorer_log.error("ota_report_upgrade_success fail")
+            self.__logger.error("ota_report_upgrade_success fail")
             return -1
         return mid
 
     def otaIoctlNumber(self, cmd_type):
-        if ((self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_INITED)
-                or (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED)):
+        if ((self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_INITED)
+                or (self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_UNINITED)):
             return -1, "state error"
 
-        if cmd_type == QcloudHub.OtaCmdType.IOT_OTAG_FETCHED_SIZE:
+        if cmd_type == self.__hub.OtaCmdType.IOT_OTAG_FETCHED_SIZE:
             return self.__ota_manager.size_fetched, "success"
-        elif cmd_type == QcloudHub.OtaCmdType.IOT_OTAG_FILE_SIZE:
+        elif cmd_type == self.__hub.OtaCmdType.IOT_OTAG_FILE_SIZE:
             return self.__ota_manager.file_size, "success"
-        elif cmd_type == QcloudHub.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE:
-            if self.__ota_manager.state is not QcloudHub.OtaState.IOT_OTAS_FETCHED:
+        elif cmd_type == self.__hub.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE:
+            if self.__ota_manager.state is not self.__hub.OtaState.IOT_OTAS_FETCHED:
                 return -1, "state error"
             md5sum = self.__ota_manager.md5.hexdigest()
             if md5sum == self.__ota_manager.md5sum:
                 return 0, "success"
             else:
                 self._ota_report_upgrade_result(self.__ota_manager.version,
-                                               QcloudHub.OtaReportType.IOT_OTAR_MD5_NOT_MATCH)
+                                               self.__hub.OtaReportType.IOT_OTAR_MD5_NOT_MATCH)
                 return -1, "md5 error"
             pass
 
         return -1, "cmd type error"
 
     def otaIoctlString(self, cmd_type, length):
-        if ((self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_INITED)
-                or (self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED)):
+        if ((self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_INITED)
+                or (self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_UNINITED)):
             return "nll", "state error"
 
-        if cmd_type == QcloudHub.OtaCmdType.IOT_OTAG_VERSION:
+        if cmd_type == self.__hub.OtaCmdType.IOT_OTAG_VERSION:
             if len(self.__ota_manager.version) > length:
                 return "null", "version length error"
             else:
                 return self.__ota_manager.version, "success"
-        elif cmd_type == QcloudHub.OtaCmdType.IOT_OTAG_MD5SUM:
+        elif cmd_type == self.__hub.OtaCmdType.IOT_OTAG_MD5SUM:
             if len(self.__ota_manager.md5sum) > length:
                 return "null", "md5sum length error"
             else:
@@ -1955,10 +1143,10 @@ QVrcRBDxzx/G\n\
 
     def otaMd5Update(self, buf):
         if buf is None:
-            self.__explorer_log.error("buf is none")
+            self.__logger.error("buf is none")
             return -1
         if self.__ota_manager.md5 is None:
-            self.__explorer_log.error("md5 handle is uninitialized")
+            self.__logger.error("md5 handle is uninitialized")
             return -1
 
         # self.__ota_manager.md5.update(buf.encode(encoding='utf-8'))
@@ -1977,7 +1165,7 @@ QVrcRBDxzx/G\n\
         header["Accept-Encoding"] = "gzip, deflate"
         header["Range"] = srange
 
-        self.http_manager = QcloudHub.http_manage()
+        self.http_manager = self.__hub.http_manage()
         self.http_manager.header = header
         self.http_manager.host = host
 
@@ -1990,11 +1178,11 @@ QVrcRBDxzx/G\n\
                                                                   context=context,
                                                                   timeout=timeout_sec)
             except urllib.error.HTTPError as e:
-                self.__explorer_log.error("https connect error:%d" % e.code)
+                self.__logger.error("https connect error:%d" % e.code)
                 self.http_manager.err_code = e.code
                 return 1
             except urllib.error.URLError as e:
-                self.__explorer_log.error("https connect error:%s" % e.reason)
+                self.__logger.error("https connect error:%s" % e.reason)
                 self.http_manager.err_reason = e.reason
                 return 1
         else:
@@ -2003,7 +1191,7 @@ QVrcRBDxzx/G\n\
                 self.http_manager.handle = urllib.request.urlopen(self.http_manager.request,
                                                                   timeout=timeout_sec)
             except Exception as e:
-                self.__explorer_log.error("http connect error:%s" % str(e))
+                self.__logger.error("http connect error:%s" % str(e))
                 return 1
         return 0
 
@@ -2014,7 +1202,7 @@ QVrcRBDxzx/G\n\
             buf = self.http_manager.handle.read(buf_len)
             return buf, len(buf)
         except Exception as e:
-            self.__explorer_log.error("http read error:%s" % str(e))
+            self.__logger.error("http read error:%s" % str(e))
             return None, -2
 
     def otaReportVersion(self, version):
@@ -2022,7 +1210,7 @@ QVrcRBDxzx/G\n\
             raise ValueError('Invalid version.')
         if len(version) < self.__ota_version_len_min or len(version) > self.__ota_version_len_max:
             raise ValueError('Invalid version length')
-        if self.__ota_manager.state == QcloudHub.OtaState.IOT_OTAS_UNINITED:
+        if self.__ota_manager.state == self.__hub.OtaState.IOT_OTAS_UNINITED:
             raise ValueError('ota handle is uninitialized')
         report = {
             "type": "report_version",
@@ -2032,7 +1220,7 @@ QVrcRBDxzx/G\n\
         }
         rc, mid = self.__ota_publish(report, 1)
         if rc != 0:
-            self.__explorer_log.error("__ota_publish fail")
+            self.__logger.error("__ota_publish fail")
             return 1, mid
         return 0, mid
 
@@ -2049,35 +1237,35 @@ QVrcRBDxzx/G\n\
         if rc != 0:
             if self.http_manager.err_code == 403:
                 self._ota_report_upgrade_result(self.__ota_manager.version,
-                                               QcloudHub.OtaReportType.IOT_OTAR_AUTH_FAIL)
+                                               self.__hub.OtaReportType.IOT_OTAR_AUTH_FAIL)
             elif self.http_manager.err_code == 404:
                 self._ota_report_upgrade_result(self.__ota_manager.version,
-                                               QcloudHub.OtaReportType.IOT_OTAR_FILE_NOT_EXIST)
+                                               self.__hub.OtaReportType.IOT_OTAR_FILE_NOT_EXIST)
             elif self.http_manager.err_code == 408:
                 self._ota_report_upgrade_result(self.__ota_manager.version,
-                                               QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
+                                               self.__hub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
             else:
                 # 其他错误判断(error.reason)
-                self.__explorer_log.error("http_init error:%d" % self.http_manager.err_code)
+                self.__logger.error("http_init error:%d" % self.http_manager.err_code)
 
         return rc
 
     def otaFetchYield(self, buf_len):
-        if self.__ota_manager.state != QcloudHub.OtaState.IOT_OTAS_FETCHING:
-            self.__explorer_log.error("ota state is not fetching")
+        if self.__ota_manager.state != self.__hub.OtaState.IOT_OTAS_FETCHING:
+            self.__logger.error("ota state is not fetching")
             return None, -1
         # http read
         buf, rv_len = self.httpFetch(buf_len)
         if rv_len < 0:
             if rv_len == -2:
                 self._ota_report_upgrade_result(self.__ota_manager.version,
-                                               QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
+                                               self.__hub.OtaReportType.IOT_OTAR_DOWNLOAD_TIMEOUT)
             return None, -2
         else:
             if self.__ota_manager.size_fetched == 0:
-                self._ota_report_progress(QcloudHub.OtaProgressCode.IOT_OTAP_FETCH_PERCENTAGE_MIN,
+                self._ota_report_progress(self.__hub.OtaProgressCode.IOT_OTAP_FETCH_PERCENTAGE_MIN,
                                          self.__ota_manager.version,
-                                         QcloudHub.OtaReportType.IOT_OTAR_DOWNLOAD_BEGIN)
+                                         self.__hub.OtaReportType.IOT_OTAR_DOWNLOAD_BEGIN)
                 self.__ota_manager.report_timestamp = int(time.time())
             pass
         self.__ota_manager.size_last_fetched = rv_len
@@ -2086,7 +1274,7 @@ QVrcRBDxzx/G\n\
         percent = int((self.__ota_manager.size_fetched * 100) / self.__ota_manager.file_size)
         if percent == 100:
             self._ota_report_progress(percent, self.__ota_manager.version,
-                                     QcloudHub.OtaReportType.IOT_OTAR_DOWNLOADING)
+                                     self.__hub.OtaReportType.IOT_OTAR_DOWNLOADING)
         else:
             timestamp = int(time.time())
             # 间隔1秒上报一次
@@ -2094,10 +1282,10 @@ QVrcRBDxzx/G\n\
                     and (self.__ota_manager.size_last_fetched > 0)):
                 self.__ota_manager.report_timestamp = timestamp
                 self._ota_report_progress(percent, self.__ota_manager.version,
-                                         QcloudHub.OtaReportType.IOT_OTAR_DOWNLOADING)
+                                         self.__hub.OtaReportType.IOT_OTAR_DOWNLOADING)
 
         if self.__ota_manager.size_fetched >= self.__ota_manager.file_size:
-            self.__ota_manager.state = QcloudHub.OtaState.IOT_OTAS_FETCHED
+            self.__ota_manager.state = self.__hub.OtaState.IOT_OTAS_FETCHED
 
         self.__ota_manager.md5.update(buf)
 
@@ -2105,13 +1293,13 @@ QVrcRBDxzx/G\n\
 
 
     def rrpcInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        rrpc_topic_sub = self.__topic_info.rrpc_topic_sub_prefix + "+"
+        rrpc_topic_sub = self.__topic.rrpc_topic_sub_prefix + "+"
         sub_res, mid = self.subscribe(rrpc_topic_sub, 0)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
             return 1
         # 判断订阅是否成功(qos0)
         return 0
@@ -2121,26 +1309,26 @@ QVrcRBDxzx/G\n\
             raise ValueError('Invalid length.')
         if self.__process_id is None:
             raise ValueError('no process id')
-        topic = self.__topic_info.rrpc_topic_pub_prefix + self.__process_id
+        topic = self.__topic.rrpc_topic_pub_prefix + self.__process_id
         rc, mid = self.publish(topic, reply, 0)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return -1, mid
         return rc, mid
 
     def shadowInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not connect")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not connect")
 
-        shadow_topic_sub = self.__topic_info.shadow_topic_sub
+        shadow_topic_sub = self.__topic.shadow_topic_sub
         sub_res, mid = self.subscribe(shadow_topic_sub, 0)
         if sub_res != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
             return -1
         return 0
 
     def getShadow(self):
-        topic_pub = self.__topic_info.shadow_topic_pub
+        topic_pub = self.__topic.shadow_topic_pub
 
         client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
         self._shadow_token_num += 1
@@ -2151,7 +1339,7 @@ QVrcRBDxzx/G\n\
         }
         rc, mid = self.publish(topic_pub, message, 0)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             return -1, mid
         return rc, mid
     
@@ -2170,10 +1358,10 @@ QVrcRBDxzx/G\n\
     def shadowUpdate(self, shadow_docs, length):
         if shadow_docs is None or length == 0:
             raise ValueError('Invalid length.')
-        topic = self.__topic_info.shadow_topic_pub
+        topic = self.__topic.shadow_topic_pub
         rc, mid = self.publish(topic, shadow_docs, 0)
         if rc != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return -1, mid
         return rc, mid
 
@@ -2190,7 +1378,7 @@ QVrcRBDxzx/G\n\
             elif arg.type == "string":
                 report_string += format_string % (arg.key, arg.data)
             else:
-                self.__explorer_log.error("type not support")
+                self.__logger.error("type not support")
                 arg.data = " "
             if arg_cnt < len(args):
                 report_string += ","
@@ -2206,26 +1394,26 @@ QVrcRBDxzx/G\n\
         return json_out
 
     def broadcastInit(self):
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not connect")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not connect")
 
-        broadcast_topic_sub = self.__topic_info.broadcast_topic_sub
+        broadcast_topic_sub = self.__topic.broadcast_topic_sub
         sub_res, mid = self.subscribe(broadcast_topic_sub, 0)
         if sub_res != 0:
-            self.__explorer_log.error("topic_publish error:rc:%d,topic:%s" % (sub_res, broadcast_topic_sub))
+            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (sub_res, broadcast_topic_sub))
             return -1
         return 0
 
     def subscribeInit(self):
 
-        if self.__explorer_state is not QcloudHub.HubState.CONNECTED:
-            raise QcloudHub.StateError("current state is not CONNECTED")
+        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+            raise self.__hub.StateError("current state is not CONNECTED")
 
-        subscribe_topic_sub = self.__topic_info.template_service_topic_sub
+        subscribe_topic_sub = self.__topic.template_service_topic_sub
         sub_res, mid = self.subscribe(subscribe_topic_sub, 1)
         # should deal mid
-        self.__explorer_log.debug("mid:%d" % mid)
+        self.__logger.debug("mid:%d" % mid)
         if sub_res != 0:
-            self.__explorer_log.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, subscribe_topic_sub))
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, subscribe_topic_sub))
             return 1
         return 0
