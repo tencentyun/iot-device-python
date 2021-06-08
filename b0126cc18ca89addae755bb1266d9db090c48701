@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a69127a_ab1aa102",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-06-08T11:18:05Z",
+      "side": 1,
+      "message": "建议命名统一格式；\n内部变量都用__小写",
+      "revId": "b0126cc18ca89addae755bb1266d9db090c48701",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
