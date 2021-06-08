@@ -16,6 +16,23 @@
       "revId": "b0126cc18ca89addae755bb1266d9db090c48701",
       "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1a18331f_43b9c64a",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-06-08T11:38:15Z",
+      "side": 1,
+      "message": "建议topic统一到常量文件中",
+      "revId": "b0126cc18ca89addae755bb1266d9db090c48701",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
     }
   ]
 }
