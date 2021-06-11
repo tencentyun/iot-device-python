@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b08e252d_dee628cc",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1000012
+      },
+      "writtenOn": "2021-06-11T07:56:35Z",
+      "side": 1,
+      "message": "explorer中的后期会废弃,迁移到hub中",
+      "parentUuid": "7a69127a_ab1aa102",
+      "revId": "b0126cc18ca89addae755bb1266d9db090c48701",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1a18331f_43b9c64a",
         "filename": "explorer/explorer.py",
         "patchSetId": 11
