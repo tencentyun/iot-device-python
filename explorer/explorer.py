@@ -399,7 +399,8 @@ QVrcRBDxzx/G\n\
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
-            if reply_obj['Response']['Len'] > 0:
+            resp = reply_obj['Response']
+            if resp is not None and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
                 if reply_obj_data is not None:
                     psk = QcloudHub._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
