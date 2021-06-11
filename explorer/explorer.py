@@ -400,7 +400,8 @@ QVrcRBDxzx/G\n\
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
             resp = reply_obj['Response']
-            if resp is not None and resp['Len'] > 0:
+
+            if 'Len' in resp and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
                 if reply_obj_data is not None:
                     psk = QcloudHub._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:QcloudHub._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
@@ -414,9 +415,10 @@ QVrcRBDxzx/G\n\
                     self.__explorer_log.warring('payload is null')
                     return -1, 'payload is null'
             else:
+                err_code = resp['Error']
                 self.__explorer_log.error('code: {}, error message: {}'.format(
-                    reply_obj['code'], reply_obj['message']))
-                return -1, reply_obj['message']
+                    err_code, err_code['Message']))
+                return -1, err_code['Message']
 
     # 遍历逻辑待优化
     def __topic_match(self, payload, topic, plist, pdict):
