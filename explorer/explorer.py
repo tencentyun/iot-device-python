@@ -34,25 +34,33 @@ from enum import IntEnum
 # from paho.mqtt.client import MQTTMessage
 from Crypto.Cipher import AES
 from hub.hub import QcloudHub
+from explorer.services.gateway.gateway import Gateway
 
 class QcloudExplorer(object):
 
     def __init__(self, device_file, tls=True, userdata=None):
+        """ 用户传参 """
+        self.__userdata = userdata
+        """ 存放用户注册的回调函数 """
+        self.__user_callback = {}
+
         self.__hub = QcloudHub(device_file, tls)
-        # 用户回调注册到hub层
+
+        """ 用户回调注册到hub层 """
         self.__register_hub_event_callback()
 
         self.__logger = self.__hub._logger
         self.__PahoLog = logging.getLogger("Paho")
         self.__PahoLog.setLevel(logging.DEBUG)
-        self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
+
+        # 将hub.__protocol传入gateway,方便其直接使用AsyncConnClient提供的能力
+        self.__gateway = Gateway(self.__hub.getProtocolHandle(), self.__logger)
+
+        # self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
         self.__topic = self.__hub._topic
 
         # set state initialized
         self.__explorer_state = self.__hub.HubState.INITIALIZED
-
-        # 用户传参
-        self.__userdata = userdata
 
         self.__template_prop_report_reply_mid = {}
         self.__template_prop_report_reply_mid_lock = threading.Lock()
@@ -266,61 +274,13 @@ class QcloudExplorer(object):
         self.__hub.user_on_subscribe = self.__user_on_subscribe
         self.__hub.user_on_unsubscribe = self.__user_on_unsubscribe
 
-    def dynregDevice(self, timeout=10):
-        """
-        dynamic device to tencent cloud
-        :param timeout: http/https timeout
-        :return: (code, msg): code 0 is success, msg is psk. Other is failed.
-        """
-        return self.__hub.dynregDevice(timeout)
-
-    # 遍历逻辑待优化
-    def __topic_match(self, payload, topic, plist, pdict):
-        for tup in plist:
-            tup_product = tup[0]
-            tup_topic = tup[1]
-            # 网关子设备的订阅
-            if topic == tup_topic:
-                if tup_product in pdict:
-                    # params = payload["params"]
-                    user_callback = pdict[tup_product]
-                    print("call user_callback")
-                    user_callback(payload, self.__userdata)
-                    return 0
-                else:
-                    self.__logger.warring('topic not registed')
-                    return 1
-            else:
-                continue
-        return 2
-
-    def __handle_nonStandard_topic(self, topic, payload):
-        # 判断topic类型(property/action/event)
-        with self.__handle_topic_lock:
-            rc = self.__topic_match(payload,
-                                    topic,
-                                    self.__gateway_subdev_property_topic_list,
-                                    self.__on_gateway_subdev_prop_cb_dict)
-            if rc == 0:
-                return 0
-
-            rc = self.__topic_match(payload,
-                                    topic,
-                                    self.__gateway_subdev_action_topic_list,
-                                    self.__on_gateway_subdev_action_cb_dict)
-            if rc == 0:
-                return 0
-
-            rc = self.__topic_match(payload,
-                                    topic,
-                                    self.__gateway_subdev_event_topic_list,
-                                    self.__on_gateway_subdev_event_cb_dict)
-            if rc == 0:
-                return 0
-
-        return 1
-
-    
+    def __handle_subdev_topic(self, message):
+        topic = message.topic
+        """ 回调用户处理 """
+        if self.__user_callback[topic] is not None:
+            self.__user_callback[topic](message)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
 
     def __handle_reply(self, method, payload):
         self.__logger.debug("reply payload:%s" % payload)
@@ -417,8 +377,8 @@ class QcloudExplorer(object):
     def getConnectStatus(self):
         return self.__explorer_state
 
-    def protocolInit(self, domain=None, useWebsocket=False):
-        return self.__hub.protocolInit(domain, useWebsocket)
+    # def protocolInit(self, domain=None, useWebsocket=False):
+        # return self.__hub.protocolInit(domain, useWebsocket)
 
     # start thread to connect and loop
     def connect(self):
@@ -426,6 +386,10 @@ class QcloudExplorer(object):
 
     def disconnect(self):
         self.__hub.disconnect()
+
+    """ 用户注册回调接口 """
+    def registerUserCallback(self, topic, callback):
+        self.__user_callback[topic] = callback
 
     # data template
     def __build_empty_json(self, info_in, method_in):
@@ -875,62 +839,40 @@ class QcloudExplorer(object):
             return 0
         pass
 
+    def dynregDevice(self, timeout=10):
+        """
+        dynamic device to tencent cloud
+        :param timeout: http/https timeout
+        :return: (code, msg): code 0 is success, msg is psk. Other is failed.
+        """
+        return self.__hub.dynregDevice(timeout)
+
     # gateway
-    # 网关子设备数据模板回调注册
-    def registerUserPropertyCallback(self, product_id, callback):
-        with self.__register_property_cb_lock:
-            self.__on_gateway_subdev_prop_cb_dict[product_id] = callback
-
-    def registerUserActionCallback(self, product_id, callback):
-        with self.__register_action_cb_lock:
-            self.__on_gateway_subdev_action_cb_dict[product_id] = callback
-
-    def registerUserEventCallback(self, product_id, callback):
-        with self.__register_event_cb_lock:
-            self.__on_gateway_subdev_event_cb_dict[product_id] = callback
-
     def gatewaySubdevSubscribe(self, product_id, topic_prop, topic_action, topic_event):
-        # 网关子设备数据模板
-        sub_res, mid = self.subscribe(topic_prop, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_prop))
-            return 1
-        else:
-            # 将product id和topic对加到列表保存
-            with self.__gateway_subdev_append_lock:
-                for topic, qos in topic_prop:
-                    tup = (product_id, topic)
-                    self.__gateway_subdev_property_topic_list.append(tup)
+        topic_list = []
+        if len(topic_prop) != 0:
+            topic_list.extend(topic_prop)
+        if len(topic_action) != 0:
+            topic_list.extend(topic_action)
+        if len(topic_event) != 0:
+            topic_list.extend(topic_event)
+        self.__hub.register_explorer_callback(topic_list, self.__handle_subdev_topic)
+        return self.__gateway.gateway_subdev_subscribe(product_id, topic_prop, topic_action, topic_event)
 
-        sub_res, mid = self.subscribe(topic_action, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_action))
-            return 1
-        else:
-            # 将product id和topic对加到列表保存
-            with self.__gateway_subdev_append_lock:
-                for topic, qos in topic_action:
-                    tup = (product_id, topic)
-                    self.__gateway_subdev_action_topic_list.append(tup)
+    def gatewaySubdevOnline(self, sub_productId, sub_devName):
+        return self.__hub.gatewaySubdevOnline(sub_productId, sub_devName)
 
-        sub_res, mid = self.subscribe(topic_event, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, topic_event))
-            return 1
-        else:
-            # 将product id和topic对加到列表保存
-            with self.__gateway_subdev_append_lock:
-                for topic, qos in topic_event:
-                    tup = (product_id, topic)
-                    self.__gateway_subdev_event_topic_list.append(tup)
+    def gatewaySubdevOffline(self, sub_productId, sub_devName):
+        return self.__hub.gatewaySubdevOffline(sub_productId, sub_devName)
 
-        return 0
+    def gatewaySubdevBind(self, sub_productId, sub_devName, sub_secret):
+        return self.__hub.gatewaySubdevBind(sub_productId, sub_devName, sub_secret)
+
+    def gatewaySubdevUnbind(self, sub_productId, sub_devName):
+        return self.__hub.gatewaySubdevUnbind(sub_productId, sub_devName)
+
+    def gatewayInit(self):
+        return self.__hub.gatewayInit()
 
     # ota
     def __ota_publish(self, message, qos):

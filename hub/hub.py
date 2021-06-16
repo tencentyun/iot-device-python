@@ -37,7 +37,7 @@ class QcloudHub(object):
     """事件核心处理层
     作为explorer/user层与协议层的中间层,负责上下层通道建立、消息分发等事物
     """
-    def __init__(self, device_file, userdata=None, tls=True):
+    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
         self.__tls = tls
         self.__key_mode = True
         self.__userdata = userdata
@@ -76,6 +76,8 @@ class QcloudHub(object):
         self.__user_on_subscribe = None
         self.__user_on_unsubscribe = None
         self.__user_on_message = None
+
+        self.__protocol_init(domain, useWebsocket)
 
     @property
     def user_on_connect(self):
@@ -335,30 +337,30 @@ class QcloudHub(object):
         message = value
         topic = message.topic
         qos = message.qos
-        mid = message.mid
-        payload = json.loads(message.payload.decode('utf-8'))
-        self._logger.info("payload:%s\n" % payload)
+        # mid = message.mid
+        # payload = json.loads(message.payload.decode('utf-8'))
+        # self._logger.info("payload:%s\n" % payload)
 
         if topic == self._topic.template_property_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](payload)
+                self.__explorer_callback[topic](message)
 
         elif topic == self._topic.template_event_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](payload)
+                self.__explorer_callback[topic](message)
 
         elif topic == self._topic.template_action_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](payload)
+                self.__explorer_callback[topic](message)
 
         elif topic == self._topic.template_service_topic_sub:
             self._logger.info("--------Reserved: template service topic")
 
             try:
-                self.__on_subscribe_service_post(payload, self.__userdata)
+                self.__on_subscribe_service_post(message, self.__userdata)
             except Exception as e:
                 self._logger.error("__on_subscribe_service_post raise exception:%s" % e)
             pass
@@ -369,27 +371,28 @@ class QcloudHub(object):
 
         elif topic in self.__user_topics and self.__user_on_message is not None:
             try:
-                self.__user_on_message(topic, payload, qos, self.__userdata)
+                self.__user_on_message(topic, message, qos, self.__userdata)
             except Exception as e:
                 self._logger.error("user_on_message process raise exception:%s" % e)
             pass
         elif topic == self._topic.template_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            self.__user_on_message(topic, message, qos, self.__userdata)
         elif topic == self._topic.sys_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            self.__user_on_message(topic, message, qos, self.__userdata)
         elif topic == self._topic.gateway_topic_sub:
-            self.__gateway.handle_gateway(payload)
+            self.__gateway.handle_gateway(message)
         elif topic == self._topic.ota_update_topic_sub:
-            self.__handle_ota(payload)
+            self.__handle_ota(message)
         elif self._topic.rrpc_topic_sub_prefix in topic:
-            self.__handle_rrpc(topic, payload)
+            self.__handle_rrpc(topic, message)
         elif self._topic.shadow_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            self.__user_on_message(topic, message, qos, self.__userdata)
         elif self._topic.broadcast_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            self.__user_on_message(topic, message, qos, self.__userdata)
         else:
-            rc = self.__handle_nonStandard_topic(topic, payload)
-            if rc != 0:
+            if self.__explorer_callback[topic] is not None:
+                self.__explorer_callback[topic](message)
+            else:
                 self._logger.error("unknow topic:%s" % topic)
         pass
 
@@ -505,11 +508,19 @@ class QcloudHub(object):
         return self.__hub_state == self.HubState.CONNECTED
 
     def register_explorer_callback(self, topic, callback):
-        if topic is not None or len(topic) > 0:
-            self.__explorer_callback[topic] = callback
+        if isinstance(topic, str):
+            if topic is not None or len(topic) > 0:
+                self.__explorer_callback[topic] = callback
+        # topic是元组列表，逐一注册
+        if isinstance(topic, list):
+            for tup in topic:
+                tup_topic = tup[1]
+                self.__explorer_callback[tup_topic] = callback
+
 
     # 连接协议(mqtt/websocket)初始化
-    def protocolInit(self, domain=None, useWebsocket=False):
+    # def protocolInit(self, domain=None, useWebsocket=False):
+    def __protocol_init(self, domain=None, useWebsocket=False):
         auth_mode = self.__device_info.auth_mode
         device_name = self.__device_info.device_name
         product_id = self.__device_info.product_id
@@ -561,6 +572,9 @@ class QcloudHub(object):
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_keepalive_interval(interval)
+
+    def getProtocolHandle(self):
+        return self.__protocol
 
     def connect(self):
         self.__loop_worker.__connect_async_req = True
