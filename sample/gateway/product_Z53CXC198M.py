@@ -1,7 +1,7 @@
 import sys
 import time
+import json
 import logging
-
 
 __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
 logging.basicConfig(format=__log_format)
@@ -10,6 +10,9 @@ g_te = None
 g_property_params = None
 g_control_msg_arrived = False
 
+topic_property_list = []
+topic_action_list = []
+topic_event_list = []
 
 def on_template_prop_changed(params, userdata):
     print("product_002:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
@@ -66,6 +69,20 @@ def on_template_action(payload, userdata):
     te.templateActionReply(clientToken, res, reply_param)
     pass
 
+def on_template_changed(message, userdata):
+    print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    topic = message.topic
+    qos = message.qos
+    payload = json.loads(message.payload.decode('utf-8'))
+    tup = (topic, qos)
+    if tup in topic_property_list:
+        on_template_prop_changed(payload, userdata)
+    elif tup in topic_action_list:
+        on_template_action(payload, userdata)
+    elif tup in topic_event_list:
+        on_template_event_post(payload, userdata)
+    else:
+        print("unkonw topic %s" % topic)
 
 def product_init(product_id, subdev_list, te):
 
@@ -74,9 +91,9 @@ def product_init(product_id, subdev_list, te):
     g_te = te
 
     # 注册数据模板回调函数
-    te.registerUserPropertyCallback(product_id, on_template_prop_changed)
-    te.registerUserActionCallback(product_id, on_template_action)
-    te.registerUserEventCallback(product_id, on_template_event_post)
+    # te.registerUserPropertyCallback(product_id, on_template_prop_changed)
+    # te.registerUserActionCallback(product_id, on_template_action)
+    # te.registerUserEventCallback(product_id, on_template_event_post)
 
     te.templateSetup("./Z53CXC198M_config.json")
 
@@ -91,21 +108,27 @@ def product_init(product_id, subdev_list, te):
     topic_action_format = "$thing/down/action/%s/%s"
     topic_event_format = "$thing/down/event/%s/%s"
 
-    topic_property_list = []
-    topic_action_list = []
-    topic_event_list = []
+    # topic_property_list = []
+    # topic_action_list = []
+    # topic_event_list = []
     for subdev in subdev_list:
 
         topic_property = topic_property_format % (product_id, subdev)
         topic_property_list.append((topic_property, 0))
+        """ 注册topic对应回调 """
+        te.registerUserCallback(topic_property, on_template_changed)
 
         topic_action = topic_action_format % (product_id, subdev)
         topic_action_list.append((topic_action, 0))
+        """ 注册topic对应回调 """
+        te.registerUserCallback(topic_action, on_template_changed)
 
         topic_event = topic_event_format % (product_id, subdev)
         topic_event_list.append((topic_event, 0))
+        """ 注册topic对应回调 """
+        te.registerUserCallback(topic_event, on_template_changed)
 
-    # 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)]
+    """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
     rc = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
     if rc == 0:
         print("gateway subdev subscribe success")
