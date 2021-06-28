@@ -14,22 +14,22 @@
 import threading
 
 class Gateway(object):
-    def __init__(self, protocol, logger=None):
+    def __init__(self, hub_handle, logger=None):
         self.__logger = logger
-        self.__protocol = protocol
+        self.__hub_handle = hub_handle
 
     def gateway_subdev_subscribe(self, product_id, topic_prop, topic_action, topic_event):    
-        rc, mid = self.__protocol.subscribe(topic_prop, 0)
+        rc, mid = self.__hub_handle.subscribe(topic_prop, 0)
         if rc != 0:
             self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (rc, topic_prop))
             return rc, mid
 
-        rc, mid = self.__protocol.subscribe(topic_action, 0)
+        rc, mid = self.__hub_handle.subscribe(topic_action, 0)
         if rc != 0:
             self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (rc, topic_action))
             return rc, mid
 
-        rc, mid = self.__protocol.subscribe(topic_event, 0)
+        rc, mid = self.__hub_handle.subscribe(topic_event, 0)
         if rc != 0:
             self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (rc, topic_event))
             return rc, mid

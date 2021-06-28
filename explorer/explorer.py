@@ -27,7 +27,6 @@ import ssl
 import socket
 import string
 import time
-# import re
 import paho.mqtt.client as mqtt
 from enum import Enum
 from enum import IntEnum
@@ -35,6 +34,7 @@ from enum import IntEnum
 from Crypto.Cipher import AES
 from hub.hub import QcloudHub
 from explorer.services.gateway.gateway import Gateway
+from explorer.services.template.template import Template
 
 class QcloudExplorer(object):
 
@@ -53,8 +53,9 @@ class QcloudExplorer(object):
         self.__PahoLog = logging.getLogger("Paho")
         self.__PahoLog.setLevel(logging.DEBUG)
 
-        # 将hub.__protocol传入gateway,方便其直接使用AsyncConnClient提供的能力
-        self.__gateway = Gateway(self.__hub.getProtocolHandle(), self.__logger)
+        # 将hub句柄传入gateway,方便其直接使用hub提供的能力
+        self.__gateway = Gateway(self.__hub, self.__logger)
+        self.__template = Template(self.__hub, self.__logger)
 
         # self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
         self.__topic = self.__hub._topic
@@ -62,37 +63,11 @@ class QcloudExplorer(object):
         # set state initialized
         self.__explorer_state = self.__hub.HubState.INITIALIZED
 
-        self.__template_prop_report_reply_mid = {}
-        self.__template_prop_report_reply_mid_lock = threading.Lock()
-        self.__user_topics = {}
-
-        # 防止多线程同时调用同一注册函数
-        self.__register_property_cb_lock = threading.Lock()
-        self.__register_action_cb_lock = threading.Lock()
-        self.__register_event_cb_lock = threading.Lock()
-
-        self.__gateway_subdev_append_lock = threading.Lock()
-        self.__handle_topic_lock = threading.Lock()
-
         # data template
-        self.__template_setup_state = False
         self.__is_subscribed_property_topic = False
-        self.template_token_num = 0
-
-        self.template_events_list = []
-        self.template_action_list = []
-        self.template_property_list = []
         
-
         # data template reply
         self.__replyAck = -1
-
-        # user data template callback
-        # 做成回调函数字典，通过topic调用对应回调(针对网关有不同数据模板设备的情况)
-        self.__on_template_prop_changed = None
-        self.__on_template_action = None
-        self.__on_template_event_post = None
-        self.__on_subscribe_service_post = None
 
         # ota
         # 保存__on_subscribe()返回的mid和qos对,用以判断订阅是否成功
@@ -204,6 +179,7 @@ class QcloudExplorer(object):
     def user_on_rrpc_message(self, value):
         self.__user_on_rrpc_message = value
 
+    """
     @property
     def on_template_prop_changed(self):
         return self.__on_template_prop_changed
@@ -235,6 +211,7 @@ class QcloudExplorer(object):
     @on_subscribe_service_post.setter
     def on_subscribe_service_post(self, value):
         self.__on_subscribe_service_post = value
+    """
 
     # 处理从hub层调用的回调
     def __hub_on_connect(self, value):
@@ -283,39 +260,22 @@ class QcloudExplorer(object):
             self.__logger.error("no callback for topic %s" % topic)
 
     def __handle_reply(self, method, payload):
-        self.__logger.debug("reply payload:%s" % payload)
-
         clientToken = payload["clientToken"]
         replyAck = payload["code"]
         if method == "get_status_reply":
             if replyAck == 0:
-                topic_pub = self.__topic.template_property_topic_pub
+                # update client token
                 self.__topic.control_clientToken = clientToken
-
-                # IOT_Template_ClearControl
-                message = {
-                    "method": "clear_control",
-                    "clientToken": clientToken
-                }
-                rc, mid = self.publish(topic_pub, message, 0)
-                # should deal mid
-                self.__logger.debug("mid:%d" % mid)
-                if rc != 0:
-                    self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
             else:
                 self.__replyAck = replyAck
                 self.__logger.debug("replyAck:%d" % replyAck)
-
         else:
             self.__replyAck = replyAck
         pass
 
     def __handle_control(self, payload):
         clientToken = payload["clientToken"]
-        params = payload["params"]
         self.__topic.control_clientToken = clientToken
-        # 调用用户回调,回调中应调用template_control_reply()
-        self.__on_template_prop_changed(params, self.__userdata)
 
     def __handle_property(self, payload):
         method = payload["method"]
@@ -324,18 +284,19 @@ class QcloudExplorer(object):
         else:
             self.__handle_reply(method, payload)
 
-    def __handle_event(self, payload):
-        try:
-            self.__on_template_event_post(payload, self.__userdata)
-        except Exception as e:
-            self.__logger.error("on_template_event_post raise exception:%s" % e)
-        pass
+    def __handle_template(self, message):
+        topic = message.topic
+        if topic == self.__topic.template_property_topic_sub:
+            payload = json.loads(message.payload.decode('utf-8'))
 
-    def __handle_action(self, payload):
-        # 调用用户回调,回调中应调用IOT_ACTION_REPLY()
-        # self.__on_template_action(clientToken, actionId, timestamp, params, self.__user_data)
-        self.__on_template_action(payload, self.__userdata)
-        pass
+            # __handle_reply回调到用户，由用户调用clearContrl()
+            self.__handle_property(payload)
+
+        """ 回调用户处理 """
+        if self.__user_callback[topic] is not None:
+            self.__user_callback[topic](message)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
 
     def __handle_ota(self, payload):
         ptype = payload["type"]
@@ -387,422 +348,129 @@ class QcloudExplorer(object):
     def disconnect(self):
         self.__hub.disconnect()
 
-    """ 用户注册回调接口 """
+    
     def registerUserCallback(self, topic, callback):
+        """
+        用户注册回调接口
+        """
         self.__user_callback[topic] = callback
 
-    # data template
-    def __build_empty_json(self, info_in, method_in):
-        if info_in is None or len(info_in) == 0:
-            raise ValueError('Invalid topic.')
-        client_token = info_in + "-" + str(self.template_token_num)
-        self.template_token_num += 1
-        if method_in is None or len(method_in) == 0:
-            json_out = {
-                "clientToken": client_token
-            }
-        else:
-            json_out = {
-                "method": method_in,
-                "clientToken": client_token
-            }
-        return json_out
+    def getEventsList(self):
+        """
+        获取数据模板配置文件event列表
+        """
+        return self.__template.get_events_list()
 
-    def __build_control_reply(self, replyPara):
-        token = self.__topic.control_clientToken
+    def getActionList(self):
+        """
+        获取数据模板配置文件action列表
+        """
+        return self.__template.get_action_list()
 
-        json_out = None
-        if len(replyPara.status_msg) > 0:
-            json_out = {
-                "code": replyPara.code,
-                "clientToken": token,
-                "status": replyPara.status_msg
-            }
-        else:
-            json_out = {
-                "code": replyPara.code,
-                "clientToken": token
-            }
-        return json_out
-
-    def __build_action_reply(self, clientToken, response, replyPara):
-        json_out = None
-        json_out = {
-            "method": "action_reply",
-            "code": replyPara.code,
-            "clientToken": clientToken,
-            "status": replyPara.status_msg,
-            "response": response
-        }
-
-        return json_out
-
-    # 构建系统信息上报的json消息
-    def __json_construct_sysinfo(self, info_in):
-        if info_in is None or len(info_in) == 0:
-            raise ValueError('Invalid info.')
-
-        json_token = self.__build_empty_json(self.__device_file.product_id, None)
-        client_token = json_token["clientToken"]
-        info_out = {
-            "method": "report_info",
-            "clientToken": client_token,
-            "params": info_in
-        }
-
-        return 0, info_out
+    def getPropertyList(self):
+        """
+        获取数据模板配置文件property列表
+        """
+        return self.__template.get_property_list()
 
     def templateSetup(self, config_file=None):
-        """
-        if self.__explorer_state is not QcloudExplorer.HubState.INITIALIZED:
-            raise QcloudExplorer.StateError("current state is not INITIALIZED")
-        if self.__template_setup_state:
-            return 1
-        """
-        try:
-            with open(config_file, encoding='utf-8') as f:
-                cfg = json.load(f)
-                index = 0
-                while index < len(cfg["events"]):
-                    # 解析events json
-                    params = cfg["events"][index]["params"]
-
-                    p_event = self.__hub.template_event()
-
-                    p_event.event_name = cfg["events"][index]["id"]
-                    p_event.type = cfg["events"][index]["type"]
-                    p_event.timestamp = 0
-                    p_event.eventDataNum = len(params)
-
-                    i = 0
-                    while i < p_event.eventDataNum:
-                        event_prop = self.__hub.template_property()
-                        event_prop.key = params[i]["id"]
-                        event_prop.type = params[i]["define"]["type"]
-
-                        if event_prop.type == "int" or event_prop.type == "bool":
-                            event_prop.data = 0
-                        elif event_prop.type == "float":
-                            event_prop.data = 0.0
-                        elif event_prop.type == "string":
-                            event_prop.data = ''
-                        else:
-                            self.__logger.error("type not support")
-                            event_prop.data = None
-
-                        p_event.event_append(event_prop)
-                        i += 1
-                    pass
-
-                    self.template_events_list.append(p_event)
-                    index += 1
-
-                '''
-                for event in self.template_events_list:
-                    print("event_name:%s" % (event.event_name))
-                    for prop in event.events_prop:
-                        print("key:%s" % (prop.key))
-                '''
-
-                index = 0
-                while index < len(cfg["actions"]):
-                    # 解析actions json
-                    inputs = cfg["actions"][index]["input"]
-                    outputs = cfg["actions"][index]["output"]
-
-                    p_action = self.__hub.template_action()
-                    p_action.action_id = cfg["actions"][index]["id"]
-                    p_action.input_num = len(inputs)
-                    p_action.output_num = len(outputs)
-                    p_action.timestamp = 0
-
-                    i = 0
-                    while i < p_action.input_num:
-                        action_prop = self.__hub.template_property()
-                        action_prop.key = inputs[i]["id"]
-                        action_prop.type = inputs[i]["define"]["type"]
-
-                        if action_prop.type == "int" or action_prop.type == "bool":
-                            action_prop.data = 0
-                        elif action_prop.type == "float":
-                            action_prop.data = 0.0
-                        elif action_prop.type == "string":
-                            action_prop.data = ''
-                        else:
-                            self.__logger.error("type not support")
-                            action_prop.data = None
-                        p_action.action_input_append(action_prop)
-                        i += 1
-                    pass
-
-                    i = 0
-                    while i < p_action.output_num:
-                        action_prop = self.__hub.template_property()
-                        action_prop.key = outputs[i]["id"]
-                        action_prop.type = outputs[i]["define"]["type"]
-
-                        if action_prop.type == "int" or action_prop.type == "bool":
-                            action_prop.data = 0
-                        elif action_prop.type == "float":
-                            action_prop.data = 0.0
-                        elif action_prop.type == "string":
-                            action_prop.data = ''
-                        else:
-                            self.__logger.error("type not support")
-                            action_prop.data = None
-                        p_action.action_output_append(action_prop)
-                        i += 1
-                    pass
-
-                    self.template_action_list.append(p_action)
-                    index += 1
-
-                pass
-
-                '''
-                for action in self.template_action_list:
-                    print("input_num:%s" % (action.input_num))
-                    for inp in action.actions_input_prop:
-                        print("key:%s" % (inp.key))
-                    print("output_num:%s" % (action.output_num))
-                    for out in action.actions_output_prop:
-                        print("key:%s" % (out.key))
-                '''
-
-                index = 0
-                while index < len(cfg["properties"]):
-                    # 解析properties json
-                    p_prop = self.__hub.template_property()
-                    p_prop.key = cfg["properties"][index]["id"]
-                    p_prop.type = cfg["properties"][index]["define"]["type"]
-
-                    if p_prop.type == "int" or p_prop.type == "bool" or p_prop.type == "enum":
-                        p_prop.data = 0
-                    elif p_prop.type == "float":
-                        p_prop.data = 0.0
-                    elif p_prop.type == "string":
-                        p_prop.data = ''
-                    else:
-                        self.__logger.error("type not support")
-                        p_prop.data = None
-
-                    self.template_property_list.append(p_prop)
-                    index += 1
-                pass
-
-                '''
-                for prop in self.template_property_list:
-                    print("key:%s" % (prop.key))
-                '''
-
-        except Exception as e:
-            self.__logger.error("config file open error:" + str(e))
-            return 2
-        self.__template_setup_state = True
-        return 0
+        return self.__template.template_setup(config_file)
 
     # 暂定传入json格式
     def templateEventPost(self, message):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
-        if message is None or len(message) == 0:
-            raise ValueError('Invalid message.')
 
-        json_token = self.__build_empty_json(self.__device_file.product_id, None)
-        client_token = json_token["clientToken"]
-        events = message["events"]
-        json_out = {
-            "method": "events_post",
-            "clientToken": client_token,
-            "events": events
-        }
-
-        template_topic_pub = self.__topic.template_event_topic_pub
-        rc, mid = self.publish(template_topic_pub, json_out, 1)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
+        topic_pub = self.__topic.template_event_topic_pub
+        rc, mid = self.__template.template_event_post(topic_pub, 1, self.__hub.getProductID(), message)
         if rc != 0:
-            return 2
-        else:
-            return 0
-        pass
-
-    def __template_event_init(self):
-        template_topic_sub = self.__topic.template_event_topic_sub
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_event)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
-        else:
-            return 0
-        pass
-
-    def __template_action_init(self):
-        template_topic_sub = self.__topic.template_action_topic_sub
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_action)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
-        else:
-            return 0
-        pass
-
+            self.__logger.error("[template] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        return rc, mid
 
     # 暂定传入的message为json格式(json/属性列表?)
     # 传入json格式时该函数应改为内部函数,由template_report()调用
     def templateJsonConstructReportArray(self, payload):
-        if payload is None or len(payload) == 0:
-            raise ValueError('Invalid payload.')
+        return self.__template.template_json_construct_report_array(self.__hub.getProductID(), payload)
 
-        json_token = self.__build_empty_json(self.__device_file.product_id, None)
-        client_token = json_token["clientToken"]
-        json_out = {
-            "method": "report",
-            "clientToken": client_token,
-            "params": payload
-        }
-
-        return json_out
-
-    def templateReportSysInfo(self, sysinfo):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+    def templateReportSysInfo(self, sysInfo):
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
-        if sysinfo is None or len(sysinfo) == 0:
-            raise ValueError('Invalid sysinfo.')
 
-        template_topic_pub = self.__topic.template_property_topic_pub
-        rc, json_out = self.__json_construct_sysinfo(sysinfo)
+        topic_pub = self.__topic.template_property_topic_pub
+        rc, mid = self.__template.template_report_sys_info(topic_pub, 0, self.__hub.getProductID(), sysInfo)
         if rc != 0:
-            self.__logger.error("__json_construct_sysinfo error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 1
-        rc, mid = self.publish(template_topic_pub, json_out, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        return 0
+            self.__logger.error("[template] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        return rc, mid
 
     def templateControlReply(self, replyPara):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic.template_property_topic_pub
-        json_out = self.__build_control_reply(replyPara)
-        rc, mid = self.publish(template_topic_pub, json_out, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
+        topic_pub = self.__topic.template_property_topic_pub
+        token = self.__topic.control_clientToken
+        rc, mid = self.__template.template_control_reply(topic_pub, 0, token, replyPara)
         if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+            self.__logger.error("[template] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        return rc, mid
+        
 
     def templateActionReply(self, clientToken, response, replyPara):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic.template_action_topic_pub
-        json_out = self.__build_action_reply(clientToken, response, replyPara)
-        rc, mid = self.publish(template_topic_pub, json_out, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
+        topic_pub = self.__topic.template_action_topic_pub
+        rc, mid = self.__template.template_action_reply(topic_pub,
+                                                0, clientToken, response, replyPara)
         if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+            self.__logger.error("[template] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        return rc, mid
 
     # 回调中处理IOT_Template_ClearControl
     def templateGetStatus(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic.template_property_topic_pub
-
-        token = self.__build_empty_json(self.__device_file.product_id, "get_status")
-        rc, mid = self.publish(template_topic_pub, token, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+        return self.__template.template_get_status(
+                                                self.__topic.template_property_topic_pub,
+                                                self.__hub.getProductID())
 
     def templateReport(self, message):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
-        if message is None or len(message) == 0:
-            raise ValueError('Invalid message.')
         # 判断下行topic是否订阅
         if self.__is_subscribed_property_topic is False:
-            template_topic_sub = self.__topic.template_property_topic_sub
-            sub_res, mid = self.subscribe(template_topic_sub, 0)
-            # should deal mid
-            self.__logger.debug("mid:%d" % mid)
-            if sub_res != 0:
-                self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-                return 1
-            self.__is_subscribed_property_topic = True
-            pass
-
-        template_topic_pub = self.__topic.template_property_topic_pub
-        rc, mid = self.publish(template_topic_pub, message, 0)
+            self.__logger.error("Template is not initialization, please do it!")
+            return -1, -1
+        rc, mid = self.__template.template_report(self.__topic.template_property_topic_pub, 0, message)
         if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+            self.__logger.error("template publish error:rc:%d,topic:%s" % (rc, self.__topic.template_property_topic_pub))
+
+        return rc, mid
 
     def templateInit(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_sub = self.__topic.template_property_topic_sub
-        # 向hub层注册property的处理函数
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_property)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
+        rc, mid = self.__template.template_init(self.__topic.template_property_topic_sub,
+                                        self.__topic.template_action_topic_sub,
+                                        self.__topic.template_event_topic_sub,
+                                        self.__handle_template)
+        if rc != 0:
+            self.__logger.error("[template] subscribe error:rc:%d" % (rc))
 
         self.__is_subscribed_property_topic = True
-        rc = self.__template_event_init()
-        if rc != 0:
-            return 1
-        rc = self.__template_action_init()
-        if rc != 0:
-            return 1
-        return 0
+        return rc, mid
+
 
     def clearControl(self):
         topic_pub = self.__topic.template_property_topic_pub
         clientToken = self.__topic.control_clientToken
-
-        # IOT_Template_ClearControl
-        message = {
-            "method": "clear_control",
-            "clientToken": clientToken
-        }
-        rc, mid = self.publish(topic_pub, message, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
+        rc, mid = self.__template.template_clear_control(
+                                                    topic_pub, 0, clientToken)
         if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
-        pass
+            self.__logger.error("[template] publish error:rc:%d,topic:%s" % 
+                                (rc, self.__topic.template_property_topic_pub))
+        return rc, mid
 
     def templateDeinit(self):
         if self.__explorer_state is not self.__hub.HubState.CONNECTED:
