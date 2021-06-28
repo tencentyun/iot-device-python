@@ -70,10 +70,10 @@ def on_template_action(payload, userdata):
     pass
 
 def on_template_changed(message, userdata):
-    print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     topic = message.topic
     qos = message.qos
     payload = json.loads(message.payload.decode('utf-8'))
+    print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     tup = (topic, qos)
     if tup in topic_property_list:
         on_template_prop_changed(payload, userdata)

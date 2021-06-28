@@ -1,18 +1,18 @@
 import sys
 import time
+import json
 import logging
 from explorer import explorer
-
 
 __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
 logging.basicConfig(format=__log_format)
 
-te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-te.enableLogger(logging.DEBUG)
-
 g_property_params = None
 g_control_msg_arrived = False
-
+te = None
+topic_property = None
+topic_action = None
+topic_event = None
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -44,7 +44,7 @@ def on_unsubscribe(mid, userdata):
     pass
 
 
-def on_template_prop_changed(params, userdata):
+def _template_prop(params, userdata):
     print("%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
 
     # save changed propertys
@@ -57,23 +57,23 @@ def on_template_prop_changed(params, userdata):
     # deal down stream
 
     # 测试,实际应发送用户属性数据
-    reply_param = te.sReplyPara()
+    global te
+    reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
+    print("reply_param:%d" % reply_param.timeout_ms)
     te.templateControlReply(reply_param)
 
     pass
 
 
-def on_template_event_post(payload, userdata):
+def _template_event_post(payload, userdata):
     print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
-
-# def on_template_action(clientToken, actionId, timestamp, payload, userdata):
-def on_template_action(payload, userdata):
+def _template_action(payload, userdata):
     print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     clientToken = payload["clientToken"]
@@ -82,7 +82,7 @@ def on_template_action(payload, userdata):
     timestamp = payload["timestamp"]
     params = payload["params"]
     """
-
+    global te
     reply_param = te.sReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
@@ -94,24 +94,41 @@ def on_template_action(payload, userdata):
     te.templateActionReply(clientToken, res, reply_param)
     pass
 
+def on_template_changed(message, userdata):
+    topic = message.topic
+    payload = json.loads(message.payload.decode('utf-8'))
+    print("example_template:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    if topic == topic_property:
+        _template_prop(payload, userdata)
+    elif topic == topic_action:
+        _template_action(payload, userdata)
+    elif topic == topic_event:
+        _template_event_post(payload, userdata)
+    else:
+        print("unkonw topic %s" % topic)
 
 def example_template():
 
     print("\033[1;36m template test start...\033[0m")
+    global te
+    te = explorer.QcloudExplorer(device_file="sample/device_info.json")
+    te.enableLogger(logging.DEBUG)
+    te.registerMqttCallback(on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe)
 
-    te.user_on_connect = on_connect
-    te.user_on_disconnect = on_disconnect
-    te.user_on_message = on_message
-    te.user_on_publish = on_publish
-    te.user_on_subscribe = on_subscribe
-    te.user_on_unsubscribe = on_unsubscribe
-    te.on_template_prop_changed = on_template_prop_changed
-    te.on_template_event_post = on_template_event_post
-    te.on_template_action = on_template_action
+    global topic_property
+    global topic_action
+    global topic_event
+    topic_property = "$thing/down/property/%s/%s" % (te.getProductID(), te.getDeviceName())
+    topic_action = "$thing/down/action/%s/%s" % (te.getProductID(), te.getDeviceName())
+    topic_event = "$thing/down/event/%s/%s" % (te.getProductID(), te.getDeviceName())
 
+    te.registerUserCallback(topic_property, on_template_changed)
+    te.registerUserCallback(topic_action, on_template_changed)
+    te.registerUserCallback(topic_event, on_template_changed)
 
     te.templateSetup("sample/template/template_config.json")
-    te.mqttInit(mqtt_domain="")
     te.connect()
 
     count = 0
@@ -158,7 +175,7 @@ def example_template():
                     params_in = te.templateJsonConstructReportArray(g_property_params)
                     te.templateReport(params_in)
                 else:
-                    prop_list = te.template_property_list
+                    prop_list = te.getPropertyList()
                     reports = {
                         prop_list[0].key: prop_list[0].data,
                         prop_list[1].key: prop_list[1].data,
@@ -170,7 +187,7 @@ def example_template():
                     te.templateReport(params_in)
 
             elif msg == "4":
-                event_list = te.template_events_list
+                event_list = te.getEventsList()
 
                 '''
                 for event in event_list:
@@ -234,5 +251,5 @@ def example_template():
     print("\033[1;36m template test success...\033[0m")
     return True
 
-# if __name__ == '__main__':
-#     example_template()
+if __name__ == '__main__':
+    example_template()

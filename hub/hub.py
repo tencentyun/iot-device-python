@@ -338,8 +338,8 @@ class QcloudHub(object):
         topic = message.topic
         qos = message.qos
         # mid = message.mid
-        # payload = json.loads(message.payload.decode('utf-8'))
-        # self._logger.info("payload:%s\n" % payload)
+        payload = json.loads(message.payload.decode('utf-8'))
+        self._logger.info(">>>>>>from qcloud payload:%s\n" % payload)
 
         if topic == self._topic.template_property_topic_sub:
             # 回调到explorer层处理
@@ -507,16 +507,21 @@ class QcloudHub(object):
     def isMqttConnected(self):
         return self.__hub_state == self.HubState.CONNECTED
 
+    def getConnectState(self):
+        return self.__hub_state
+
     def register_explorer_callback(self, topic, callback):
+        """
+        注册explorer层回调到hub层
+        topic可为单个topic或topic列表
+        """
         if isinstance(topic, str):
             if topic is not None or len(topic) > 0:
                 self.__explorer_callback[topic] = callback
-        # topic是元组列表，逐一注册
         if isinstance(topic, list):
-            for tup in topic:
-                tup_topic = tup[1]
-                self.__explorer_callback[tup_topic] = callback
-
+            for tp in topic:
+                self.__explorer_callback[tp] = callback
+        pass
 
     # 连接协议(mqtt/websocket)初始化
     # def protocolInit(self, domain=None, useWebsocket=False):
@@ -575,9 +580,15 @@ class QcloudHub(object):
 
     def getProtocolHandle(self):
         return self.__protocol
+    
+    def getProductID(self):
+        return self.__device_info.product_id
+    
+    def getDeviceName(self):
+        return self.__device_info.device_name
 
     def connect(self):
-        self.__loop_worker.__connect_async_req = True
+        self.__loop_worker._connect_async_req = True
         with self.__loop_worker._exit_req_lock:
             self.__loop_worker._exit_req = False
         return self.__loop_worker._thread.start(self._loop)
@@ -587,7 +598,7 @@ class QcloudHub(object):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         self.__hub_state = self.HubState.DISCONNECTING
-        if self.__loop_worker._connect_async_req:
+        if self.__loop_worker._connect_async_req is True:
             with self.__loop_worker._exit_req_lock:
                 self.__loop_worker._exit_req = True
 
@@ -631,6 +642,10 @@ class QcloudHub(object):
         if isinstance(topic, str):
             # topic判断
             unsubscribe_topics.append(topic)
+        elif isinstance(topic, list):
+            for tp in topic:
+                unsubscribe_topics.append(tp)
+            pass
         with self.__user_topics_unsubscribe_request_lock:
             if len(unsubscribe_topics) == 0:
                 return self.ErrorCode.ERR_TOPIC_NONE, -1
