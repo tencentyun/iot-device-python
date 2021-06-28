@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c50b21d9_fa5cf6b7",
+        "filename": "explorer/explorer.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-06-28T02:19:05Z",
+      "side": 1,
+      "message": "getProtocolHandle 不用做一层中转，上层可以直接调用下层组件",
+      "revId": "45558d27e92f252891da915d9bed86b0235ddb64",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6cb2c16_42e46f31",
+        "filename": "explorer/services/gateway/gateway.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-06-28T02:19:05Z",
+      "side": 1,
+      "message": "建议logger 后面封装为 @classmethod 类方法全局统一调用，不用传递",
+      "revId": "45558d27e92f252891da915d9bed86b0235ddb64",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
