@@ -507,6 +507,9 @@ class QcloudHub(object):
     def isMqttConnected(self):
         return self.__hub_state == self.HubState.CONNECTED
 
+    def getConnectState(self):
+        return self.__hub_state
+
     def register_explorer_callback(self, topic, callback):
         if isinstance(topic, str):
             if topic is not None or len(topic) > 0:
@@ -575,6 +578,9 @@ class QcloudHub(object):
 
     def getProtocolHandle(self):
         return self.__protocol
+    
+    def getProductID(self):
+        return self.__device_info.product_id
 
     def connect(self):
         self.__loop_worker.__connect_async_req = True

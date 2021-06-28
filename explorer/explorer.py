@@ -27,7 +27,6 @@ import ssl
 import socket
 import string
 import time
-# import re
 import paho.mqtt.client as mqtt
 from enum import Enum
 from enum import IntEnum
@@ -35,6 +34,7 @@ from enum import IntEnum
 from Crypto.Cipher import AES
 from hub.hub import QcloudHub
 from explorer.services.gateway.gateway import Gateway
+from explorer.services.template.template import Template
 
 class QcloudExplorer(object):
 
@@ -53,8 +53,9 @@ class QcloudExplorer(object):
         self.__PahoLog = logging.getLogger("Paho")
         self.__PahoLog.setLevel(logging.DEBUG)
 
-        # 将hub.__protocol传入gateway,方便其直接使用AsyncConnClient提供的能力
-        self.__gateway = Gateway(self.__hub.getProtocolHandle(), self.__logger)
+        # 将hub句柄传入gateway,方便其直接使用hub提供的能力
+        self.__gateway = Gateway(self.__hub, self.__logger)
+        self.__template = Template(self.__hub, self.__logger)
 
         # self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
         self.__topic = self.__hub._topic
@@ -62,6 +63,8 @@ class QcloudExplorer(object):
         # set state initialized
         self.__explorer_state = self.__hub.HubState.INITIALIZED
 
+
+        # sub---
         self.__template_prop_report_reply_mid = {}
         self.__template_prop_report_reply_mid_lock = threading.Lock()
         self.__user_topics = {}
@@ -337,6 +340,14 @@ class QcloudExplorer(object):
         self.__on_template_action(payload, self.__userdata)
         pass
 
+    def __handle_template(self, message):
+        topic = message.topic
+        """ 回调用户处理 """
+        if self.__user_callback[topic] is not None:
+            self.__user_callback[topic](message)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
+
     def __handle_ota(self, payload):
         ptype = payload["type"]
         if ptype == "report_version_rsp":
@@ -425,6 +436,7 @@ class QcloudExplorer(object):
             }
         return json_out
 
+    # sub---
     def __build_action_reply(self, clientToken, response, replyPara):
         json_out = None
         json_out = {
@@ -627,33 +639,6 @@ class QcloudExplorer(object):
             return 0
         pass
 
-    def __template_event_init(self):
-        template_topic_sub = self.__topic.template_event_topic_sub
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_event)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
-        else:
-            return 0
-        pass
-
-    def __template_action_init(self):
-        template_topic_sub = self.__topic.template_action_topic_sub
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_action)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
-        else:
-            return 0
-        pass
-
-
     # 暂定传入的message为json格式(json/属性列表?)
     # 传入json格式时该函数应改为内部函数,由template_report()调用
     def templateJsonConstructReportArray(self, payload):
@@ -706,87 +691,48 @@ class QcloudExplorer(object):
         pass
 
     def templateActionReply(self, clientToken, response, replyPara):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic.template_action_topic_pub
-        json_out = self.__build_action_reply(clientToken, response, replyPara)
-        rc, mid = self.publish(template_topic_pub, json_out, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+        return self.__template.template_action_reply(self.__topic.template_action_topic_pub,
+                                                0, clientToken, response, replyPara)
 
     # 回调中处理IOT_Template_ClearControl
     def templateGetStatus(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_pub = self.__topic.template_property_topic_pub
-
-        token = self.__build_empty_json(self.__device_file.product_id, "get_status")
-        rc, mid = self.publish(template_topic_pub, token, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+        return self.__template.template_get_status(
+                                                self.__topic.template_property_topic_pub,
+                                                self.__hub.getProductID())
 
     def templateReport(self, message):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
-        if message is None or len(message) == 0:
-            raise ValueError('Invalid message.')
         # 判断下行topic是否订阅
         if self.__is_subscribed_property_topic is False:
-            template_topic_sub = self.__topic.template_property_topic_sub
-            sub_res, mid = self.subscribe(template_topic_sub, 0)
-            # should deal mid
-            self.__logger.debug("mid:%d" % mid)
-            if sub_res != 0:
-                self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-                return 1
-            self.__is_subscribed_property_topic = True
-            pass
-
-        template_topic_pub = self.__topic.template_property_topic_pub
-        rc, mid = self.publish(template_topic_pub, message, 0)
+            self.__logger.error("Template is not initialization, please do it!")
+            return -1, -1
+        rc, mid = self.__template.template_report(self.__topic.template_property_topic_pub, 0, message)
         if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, template_topic_pub))
-            return 2
-        else:
-            return 0
-        pass
+            self.__logger.error("template publish error:rc:%d,topic:%s" % (rc, self.__topic.template_property_topic_pub))
+
+        return rc, mid
 
     def templateInit(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
+        if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
-        template_topic_sub = self.__topic.template_property_topic_sub
-        # 向hub层注册property的处理函数
-        self.__hub.register_explorer_callback(template_topic_sub, self.__handle_property)
-        sub_res, mid = self.subscribe(template_topic_sub, 0)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, template_topic_sub))
-            return 1
+        rc, mid = self.__template.template_init(self.__topic.template_property_topic_sub,
+                                        self.__topic.template_action_topic_sub,
+                                        self.__topic.template_event_topic_sub,
+                                        self.__handle_template)
+        if rc != 0:
+            self.__logger.error("[template] subscribe error:rc:%d" % (rc))
 
         self.__is_subscribed_property_topic = True
-        rc = self.__template_event_init()
-        if rc != 0:
-            return 1
-        rc = self.__template_action_init()
-        if rc != 0:
-            return 1
-        return 0
+        return rc, mid
+
 
     def clearControl(self):
         topic_pub = self.__topic.template_property_topic_pub
