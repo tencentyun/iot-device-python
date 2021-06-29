@@ -129,7 +129,7 @@ def product_init(product_id, subdev_list, te):
         te.registerUserCallback(topic_event, on_template_changed)
 
     """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
-    rc = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
+    rc, mid = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
     if rc == 0:
         print("gateway subdev subscribe success")
     else:
@@ -147,12 +147,12 @@ def product_init(product_id, subdev_list, te):
             "append_info": "your self define info"
         }
     }
-    rc = te.templateReportSysInfo(sys_info)
+    rc, mid = te.templateReportSysInfo(sys_info)
     if rc != 0:
         print("sysinfo report fail")
         return 1
 
-    rc = te.templateGetStatus()
+    rc, mid = te.templateGetStatus()
     if rc != 0:
         print("get status fail")
         return 1

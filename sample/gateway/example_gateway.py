@@ -2,13 +2,15 @@ import sys
 import time
 import logging
 from threading import Thread
+# explorer网关测试
 from explorer import explorer
-from hub.hub import QcloudHub
+# hub网关测试
+# from hub.hub import QcloudHub
 
-from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
-from gateway import product_Z53CXC198M as product_Z53CXC198M
-# import product_ZPHBLEB4J5
-# import product_Z53CXC198M
+# from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
+# from gateway import product_Z53CXC198M as product_Z53CXC198M
+import product_ZPHBLEB4J5
+import product_Z53CXC198M
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -82,18 +84,22 @@ def example_gateway():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
+    global te
     te = explorer.QcloudExplorer(device_file="sample/device_info.json")
     te.enableLogger(logging.DEBUG)
 
     print("\033[1;36m gateway test start...\033[0m")
 
-    te.user_on_connect = on_connect
-    te.user_on_disconnect = on_disconnect
-    te.user_on_message = on_message
-    te.user_on_publish = on_publish
-    te.user_on_subscribe = on_subscribe
-    te.user_on_unsubscribe = on_unsubscribe
-    te.mqttInit(mqtt_domain="")
+    # te.user_on_connect = on_connect
+    # te.user_on_disconnect = on_disconnect
+    # te.user_on_message = on_message
+    # te.user_on_publish = on_publish
+    # te.user_on_subscribe = on_subscribe
+    # te.user_on_unsubscribe = on_unsubscribe
+    # te.mqttInit(mqtt_domain="")
+    te.registerMqttCallback(on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe)
     te.connect()
 
     count = 0
@@ -114,7 +120,7 @@ def example_gateway():
     te.gatewayInit()
 
     # 获取到子设备信息后,在此维护设备状态,sdk中不处理设备状态
-    subdev_list = te.gateway_subdev_list
+    subdev_list = te.gatewaySubdevGetConfigList()
 
     while True:
         try:
@@ -124,33 +130,35 @@ def example_gateway():
         else:
             if msg == "1":
                 for subdev in subdev_list:
-                    if subdev.session_status is not QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
-                        rc = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
+                    if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is not True:
+                        rc, mid = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE
+                            # subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE
+                            te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "online")
                             print("online success")
                         else:
                             print("online fail")
 
             elif msg == "2":
                 for subdev in subdev_list:
-                    if subdev.session_status == QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE:
-                        rc = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
+                    if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is True:
+                        rc, mid = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
+                            # subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
+                            te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "offline")
                             print("offline success")
                         else:
                             print("offline fail")
 
             elif msg == "3":
-                rc = te.gatewaySubdevBind("YOUR_PRODUCT_ID", "YOUR_DEVICE_NAME", "YOUR_DEVICE_SECRET")
+                rc, mid = te.gatewaySubdevBind("Z53CXC198M", "dev1", "bPAufp95WWaGF+fXa4bCxA==")
                 if rc == 0:
                     print("bind success")
                 else:
                     print("bind fail")
 
             elif msg == "4":
-                rc = te.gatewaySubdevUnbind("YOUR_PRODUCT_ID", "YOUR_DEVICE_NAME", None)
+                rc, mid = te.gatewaySubdevUnbind("Z53CXC198M", "dev1")
                 if rc == 0:
                     print("unbind success")
                 else:
@@ -197,5 +205,5 @@ def example_gateway():
                 sys.exit()
     print("\033[1;36m gateway test success...\033[0m")
     return True
-# if __name__ == '__main__':
-#	example_gateway()
+if __name__ == '__main__':
+	example_gateway()

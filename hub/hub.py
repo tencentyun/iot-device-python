@@ -57,6 +57,7 @@ class QcloudHub(object):
         """
         self.__explorer_callback = {}
 
+        self.__user_topics = {}
         self.__user_topics_subscribe_request = {}
         self.__user_topics_unsubscribe_request = {}
         self.__user_topics_request_lock = threading.Lock()
@@ -339,22 +340,23 @@ class QcloudHub(object):
         qos = message.qos
         # mid = message.mid
         payload = json.loads(message.payload.decode('utf-8'))
-        self._logger.info(">>>>>>from qcloud payload:%s\n" % payload)
+        print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
+        print("gateway sub topic :%s" % self._topic.gateway_topic_sub)
 
         if topic == self._topic.template_property_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](message)
+                self.__explorer_callback[topic](topic, qos, payload)
 
         elif topic == self._topic.template_event_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](message)
+                self.__explorer_callback[topic](topic, qos, payload)
 
         elif topic == self._topic.template_action_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](message)
+                self.__explorer_callback[topic](topic, qos, payload)
 
         elif topic == self._topic.template_service_topic_sub:
             self._logger.info("--------Reserved: template service topic")
@@ -371,27 +373,27 @@ class QcloudHub(object):
 
         elif topic in self.__user_topics and self.__user_on_message is not None:
             try:
-                self.__user_on_message(topic, message, qos, self.__userdata)
+                self.__user_on_message(topic, payload, qos, self.__userdata)
             except Exception as e:
                 self._logger.error("user_on_message process raise exception:%s" % e)
             pass
         elif topic == self._topic.template_topic_sub:
-            self.__user_on_message(topic, message, qos, self.__userdata)
+            self.__user_on_message(topic, payload, qos, self.__userdata)
         elif topic == self._topic.sys_topic_sub:
-            self.__user_on_message(topic, message, qos, self.__userdata)
+            self.__user_on_message(topic, payload, qos, self.__userdata)
         elif topic == self._topic.gateway_topic_sub:
-            self.__gateway.handle_gateway(message)
+            self.__gateway.handle_gateway(topic, payload)
         elif topic == self._topic.ota_update_topic_sub:
-            self.__handle_ota(message)
+            self.__handle_ota(topic, payload)
         elif self._topic.rrpc_topic_sub_prefix in topic:
-            self.__handle_rrpc(topic, message)
+            self.__handle_rrpc(topic, payload)
         elif self._topic.shadow_topic_sub in topic:
-            self.__user_on_message(topic, message, qos, self.__userdata)
+            self.__user_on_message(topic, payload, qos, self.__userdata)
         elif self._topic.broadcast_topic_sub in topic:
-            self.__user_on_message(topic, message, qos, self.__userdata)
+            self.__user_on_message(topic, payload, qos, self.__userdata)
         else:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](message)
+                self.__explorer_callback[topic](topic, qos, payload)
             else:
                 self._logger.error("unknow topic:%s" % topic)
         pass
@@ -405,9 +407,8 @@ class QcloudHub(object):
             sys_topic_sub = self._topic.sys_topic_sub
             sys_topic_pub = self._topic.sys_topic_pub
             qos = 0
-            sub_res, mid = self.subscribe(sys_topic_sub, qos)
-            self._logger.debug("mid:%d" % mid)
-            if sub_res == 0:
+            rc, mid = self.subscribe(sys_topic_sub, qos)
+            if rc == 0:
                 payload = {
                     "type": "get",
                     "resource": [
@@ -416,7 +417,7 @@ class QcloudHub(object):
                 }
                 self.publish(sys_topic_pub, payload, qos)
             else:
-                self._logger.error("topic_subscribe error:rc:%d" % (sub_res))
+                self._logger.error("topic_subscribe error:rc:%d" % (rc))
         pass
 
     def __on_disconnect(self, client, user_data, rc):
@@ -733,6 +734,15 @@ class QcloudHub(object):
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
 
+    def isSubdevStatusOnline(self, sub_productId, sub_devName):
+        return self.__gateway.is_subdev_status_online(sub_productId, sub_devName)
+
+    def updateSubdevStatus(self, sub_productId, sub_devName, status):
+        return self.__gateway.update_subdev_status(sub_productId, sub_devName, status)
+
+    def gatewaySubdevGetConfigList(self):
+        return self.__gateway.gateway_get_subdev_config_list()
+
     def gatewaySubdevOnline(self, sub_productId, sub_devName):
         self.__assert(sub_productId)
         self.__assert(sub_devName)
@@ -767,7 +777,7 @@ class QcloudHub(object):
         self.__assert(device_name)
 
         gateway_topic_pub = self._topic.gateway_topic_pub
-        return self.__gateway.gateway_get_subdev_list(gateway_topic_pub, 0, product_id, device_name, bind_list)
+        return self.__gateway.gateway_get_subdev_bind_list(gateway_topic_pub, 0, product_id, device_name, bind_list)
 
     def gatewayInit(self):
         if self.__hub_state is not self.HubState.CONNECTED:
