@@ -61,7 +61,6 @@ class QcloudExplorer(object):
         # self.__template = Template(self.__hub, self.__logger)
         self.__template = Template(device_file, tls, self.__logger)
 
-        # self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
         self.__topic = self.__hub._topic
 
         # set state initialized
@@ -261,11 +260,10 @@ class QcloudExplorer(object):
         self.__hub.user_on_subscribe = self.__user_on_subscribe
         self.__hub.user_on_unsubscribe = self.__user_on_unsubscribe
 
-    def __handle_subdev_topic(self, message):
-        topic = message.topic
+    def __handle_subdev_topic(self, topic, qos, payload):
         """ 回调用户处理 """
         if self.__user_callback[topic] is not None:
-            self.__user_callback[topic](message, self.__userdata)
+            self.__user_callback[topic](topic, qos, payload, self.__userdata)
         else:
             self.__logger.error("no callback for topic %s" % topic)
 
@@ -294,17 +292,16 @@ class QcloudExplorer(object):
         else:
             self.__handle_reply(method, payload)
 
-    def __handle_template(self, message):
-        topic = message.topic
+    def __handle_template(self, topic, qos, payload):
         if topic == self.__topic.template_property_topic_sub:
-            payload = json.loads(message.payload.decode('utf-8'))
+            # payload = json.loads(message.payload.decode('utf-8'))
 
             # __handle_reply回调到用户，由用户调用clearContrl()
             self.__handle_property(payload)
 
         """ 回调用户处理 """
         if self.__user_callback[topic] is not None:
-            self.__user_callback[topic](message, self.__userdata)
+            self.__user_callback[topic](topic, qos, payload, self.__userdata)
         else:
             self.__logger.error("no callback for topic %s" % topic)
 
@@ -527,6 +524,18 @@ class QcloudExplorer(object):
         return self.__hub.dynregDevice(timeout)
 
     # gateway
+    def isSubdevStatusOnline(self, sub_productId, sub_devName):
+        return self.__hub.isSubdevStatusOnline(sub_productId, sub_devName)
+
+    def updateSubdevStatus(self, sub_productId, sub_devName, status):
+        """
+        更新本地维护的子设备状态(online/offline)
+        """
+        return self.__hub.updateSubdevStatus(sub_productId, sub_devName, status)
+
+    def gatewaySubdevGetConfigList(self):
+        return self.__hub.gatewaySubdevGetConfigList()
+
     def gatewaySubdevSubscribe(self, product_id, topic_prop, topic_action, topic_event):
         topic_list = []
         if len(topic_prop) != 0:

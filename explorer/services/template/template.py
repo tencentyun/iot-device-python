@@ -17,7 +17,6 @@ from explorer.providers.providers import Providers
 class Template(object):
     def __init__(self, device_file, tls, logger=None):
         self.__logger = logger
-        # self.__hub = hub_handle
         self.__provider = Providers(device_file, tls)
         self.__hub = self.__provider.hub
         self._template_token_num = 0

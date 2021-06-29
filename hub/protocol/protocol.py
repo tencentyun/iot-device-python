@@ -248,7 +248,8 @@ class AsyncConnClient(object):
         rc, mid = -1, -1
         if self.__mqtt_client is None:
             return rc, mid
-        
+
+        # rc, mid = self.__mqtt_client.publish(topic, json.dumps(payload), qos)
         rc, mid = self.__mqtt_client.publish(topic, payload, qos)
         if rc == mqtt.MQTT_ERR_SUCCESS:
             self.__logger.debug("publish success")

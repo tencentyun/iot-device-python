@@ -94,9 +94,7 @@ def _template_action(payload, userdata):
     te.templateActionReply(clientToken, res, reply_param)
     pass
 
-def on_template_changed(message, userdata):
-    topic = message.topic
-    payload = json.loads(message.payload.decode('utf-8'))
+def on_template_changed(topic, qos, payload, userdata):
     print("example_template:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     if topic == topic_property:
         _template_prop(payload, userdata)

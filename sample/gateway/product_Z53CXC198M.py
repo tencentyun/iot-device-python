@@ -69,10 +69,7 @@ def on_template_action(payload, userdata):
     te.templateActionReply(clientToken, res, reply_param)
     pass
 
-def on_template_changed(message, userdata):
-    topic = message.topic
-    qos = message.qos
-    payload = json.loads(message.payload.decode('utf-8'))
+def on_template_changed(topic, qos, payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     tup = (topic, qos)
     if tup in topic_property_list:
@@ -95,7 +92,7 @@ def product_init(product_id, subdev_list, te):
     # te.registerUserActionCallback(product_id, on_template_action)
     # te.registerUserEventCallback(product_id, on_template_event_post)
 
-    te.templateSetup("./Z53CXC198M_config.json")
+    te.templateSetup("sample/gateway/Z53CXC198M_config.json")
 
     """
     # 保存自身property list
@@ -129,7 +126,7 @@ def product_init(product_id, subdev_list, te):
         te.registerUserCallback(topic_event, on_template_changed)
 
     """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
-    rc = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
+    rc, mid = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
     if rc == 0:
         print("gateway subdev subscribe success")
     else:
@@ -147,12 +144,12 @@ def product_init(product_id, subdev_list, te):
             "append_info": "your self define info"
         }
     }
-    rc = te.templateReportSysInfo(sys_info)
+    rc, mid = te.templateReportSysInfo(sys_info)
     if rc != 0:
         print("sysinfo report fail")
         return 1
 
-    rc = te.templateGetStatus()
+    rc, mid = te.templateGetStatus()
     if rc != 0:
         print("get status fail")
         return 1

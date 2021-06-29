@@ -14,6 +14,7 @@
 import sys
 import threading
 import time
+import json
 import random
 from enum import Enum
 from hub.utils.codec import Codec
@@ -46,7 +47,8 @@ class Gateway(object):
         self.__gateway_session_bind_lock = threading.Lock()
         self.__gateway_session_unbind_lock = threading.Lock()
 
-        self.gateway_subdev_list = []
+        # 解析配置文件获取的子设备列表
+        self.gateway_subdev_config_list = []
 
     class SessionState(Enum):
         SUBDEV_SEESION_STATUS_INIT = 0
@@ -60,9 +62,8 @@ class Gateway(object):
             self.sub_devName = None
             self.session_status = 0
 
-    def handle_gateway(self, message):
-        self.__logger.debug("gateway payload:%s" % message)
-
+    def handle_gateway(self, topic, message):
+        print("-------handle_gateway message:%s" % message)
         self.__gateway_raply = True
         ptype = message["type"]
         payload = message["payload"]
@@ -181,7 +182,7 @@ class Gateway(object):
             sign_content = sign_format % (pid, name, nonce, timestamp)
 
             # 计算二进制
-            sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(bind_secret.encode("utf-8"),
+            sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha1_encode(bind_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
             # sign = hmac.new(bind_secret.encode("utf-8"), sign_content.encode("utf-8"), hashlib.sha1).digest()
             # sign_base64 = base64.b64encode(sign).decode('utf-8')
@@ -221,7 +222,7 @@ class Gateway(object):
             p_subdev.sub_devName = subdev_list[index]['sub_devName']
             p_subdev.session_status = self.SessionState.SUBDEV_SEESION_STATUS_INIT
 
-            self.gateway_subdev_list.append(p_subdev)
+            self.gateway_subdev_config_list.append(p_subdev)
             index += 1
         pass
 
@@ -230,12 +231,41 @@ class Gateway(object):
             self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (rc, topic))
         return rc, mid
 
+    def is_subdev_status_online(self, sub_productId, sub_devName):
+        """
+        判断指定子设备SDK维护的状态是否为online
+        """
+        for sub in self.gateway_subdev_config_list:
+            if (sub.sub_productId == sub_productId
+                    and sub.sub_devName == sub_devName):
+                return sub.session_status == self.SessionState.SUBDEV_SEESION_STATUS_ONLINE
+        return False
+
+    def update_subdev_status(self, sub_productId, sub_devName, status):
+        """
+        设置指定子设备SDK维护的状态
+        """
+        for sub in self.gateway_subdev_config_list:
+            if (sub.sub_productId == sub_productId
+                    and sub.sub_devName == sub_devName):
+                self.gateway_subdev_config_list.remove(sub)
+            pass
+        subdev = self.gateway_subdev()
+        subdev.sub_productId = sub_productId
+        subdev.sub_devName = sub_devName
+        if status == "online":
+            subdev.session_status = self.SessionState.SUBDEV_SEESION_STATUS_ONLINE
+        elif status == "offline":
+            subdev.session_status = self.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
+        self.gateway_subdev_config_list.append(subdev)
+
     def gateway_subdev_online(self, topic, qos, sub_productId, sub_devName):
         # 保存当前会话的设备client_id
         client_id = sub_productId + "/" + sub_devName
         payload = self.__build_session_payload("online", sub_productId, sub_devName, None)
 
-        rc, mid = self.__protocol.publish(topic, payload, qos)
+        print("<<<< payload:%s" % payload)
+        rc, mid = self.__protocol.publish(topic, json.dumps(payload), qos)
         if rc != 0:
             self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return rc, mid
@@ -252,7 +282,7 @@ class Gateway(object):
         client_id = sub_productId + "/" + sub_devName
         payload = self.__build_session_payload("offline", sub_productId, sub_devName, None)
 
-        rc, mid = self.__protocol.publish(topic, payload, qos)
+        rc, mid = self.__protocol.publish(topic, json.dumps(payload), qos)
         if rc != 0:
             self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return rc, mid
@@ -269,7 +299,7 @@ class Gateway(object):
         client_id = sub_productId + "/" + sub_devName
         payload = self.__build_session_payload("bind", sub_productId, sub_devName, sub_secret)
 
-        rc, mid = self.__protocol.publish(topic, payload, qos)
+        rc, mid = self.__protocol.publish(topic, json.dumps(payload), qos)
         if rc != 0:
             self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return rc, mid
@@ -286,7 +316,7 @@ class Gateway(object):
         client_id = sub_productId + "/" + sub_devName
         payload = self.__build_session_payload("unbind", sub_productId, sub_devName, None)
 
-        rc, mid = self.__protocol.publish(topic, payload, qos)
+        rc, mid = self.__protocol.publish(topic, json.dumps(payload), qos)
         if rc != 0:
             self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return rc, mid
@@ -299,11 +329,11 @@ class Gateway(object):
 
         return rc, mid
     
-    def gateway_get_subdev_list(self, topic, qos, product_id, device_name, bind_list):
+    def gateway_get_subdev_bind_list(self, topic, qos, product_id, device_name, bind_list):
         client_id = product_id + "/" + device_name
         payload = self.__build_session_payload("describe_sub_devices", product_id, device_name, None)
 
-        rc, mid = self.__protocol.publish(topic, payload, qos)
+        rc, mid = self.__protocol.publish(topic, json.dumps(payload), qos)
         if rc != 0:
             self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
             return rc, mid
@@ -317,3 +347,9 @@ class Gateway(object):
         # 直接使用赋值操作以节省空间,要求user不能修改该空间
         bind_list = self.__gateway_subdev_bind_list
         return rc, mid
+
+    def gateway_get_subdev_config_list(self):
+        """
+        获取配置文件中的子设备列表
+        """
+        return self.gateway_subdev_config_list
