@@ -12,11 +12,14 @@
 # limitations under the License.
 
 import json
+from explorer.providers.providers import Providers
 
 class Template(object):
-    def __init__(self, hub_handle, logger=None):
+    def __init__(self, device_file, tls, logger=None):
         self.__logger = logger
-        self.__hub_handle = hub_handle
+        # self.__hub = hub_handle
+        self.__provider = Providers(device_file, tls)
+        self.__hub = self.__provider.hub
         self._template_token_num = 0
 
         self.__template_events_list = []
@@ -92,36 +95,36 @@ class Template(object):
 
     def template_deinit(self, topic):
         self.__assert(topic)
-        return self.__hub_handle.unsubscribe(topic)
+        return self.__hub.unsubscribe(topic)
 
     def template_init(self, property_topic, action_topic, event_topic, callback):
         topic_list = []
         topic_list.append(property_topic)
         topic_list.append(action_topic)
         topic_list.append(event_topic)
-        self.__hub_handle.register_explorer_callback(topic_list, callback)
+        self.__hub.register_explorer_callback(topic_list, callback)
 
         topic_list.clear()
         topic_list.append((property_topic, 0))
         topic_list.append((action_topic, 0))
         topic_list.append((event_topic, 0))
-        return self.__hub_handle.subscribe(topic_list, 0)
+        return self.__hub.subscribe(topic_list, 0)
 
     def template_report(self, topic, qos, message):
         if message is None or len(message) == 0:
             raise ValueError('Invalid message.')
-        return self.__hub_handle.publish(topic, message, qos)
+        return self.__hub.publish(topic, message, qos)
 
     def template_get_status(self, topic, id):
         token = self.__build_empty_json(id, "get_status")
-        return self.__hub_handle.publish(topic, token, 0)
+        return self.__hub.publish(topic, token, 0)
 
     def template_action_reply(self, topic, qos, clientToken, response, replyPara):
         self.__assert(topic)
         self.__assert(clientToken)
         self.__assert(response)
         json_out = self.__build_action_reply(clientToken, response, replyPara)
-        return self.__hub_handle.publish(topic, json_out, qos)
+        return self.__hub.publish(topic, json_out, qos)
 
     # IOT_Template_ClearControl
     def template_clear_control(self, topic, qos, clientToken):
@@ -131,20 +134,20 @@ class Template(object):
             "method": "clear_control",
             "clientToken": clientToken
         }
-        return self.__hub_handle.publish(topic, message, qos)
+        return self.__hub.publish(topic, message, qos)
 
     def template_control_reply(self, topic, qos, token, replyPara):
         self.__assert(topic)
         # self.__assert(replyPara)
         json_out = self.__build_control_reply(token, replyPara)
-        return self.__hub_handle.publish(topic, json_out, qos)
+        return self.__hub.publish(topic, json_out, qos)
 
     def template_report_sys_info(self, topic, qos, pid, sysInfo):
         self.__assert(topic)
         self.__assert(sysInfo)
 
         json_out = self.__json_construct_sysinfo(pid, sysInfo)
-        return self.__hub_handle.publish(topic, json_out, qos)
+        return self.__hub.publish(topic, json_out, qos)
 
     def template_json_construct_report_array(self, pid, payload):
         self.__assert(pid)
@@ -173,7 +176,7 @@ class Template(object):
             "clientToken": client_token,
             "events": events
         }
-        return self.__hub_handle.publish(topic, json_out, qos)
+        return self.__hub.publish(topic, json_out, qos)
 
     def template_setup(self, config_file=None):
         if self.__template_setup_state:
@@ -186,7 +189,7 @@ class Template(object):
                     # 解析events json
                     params = cfg["events"][index]["params"]
 
-                    p_event = self.__hub_handle.template_event()
+                    p_event = self.__hub.template_event()
 
                     p_event.event_name = cfg["events"][index]["id"]
                     p_event.type = cfg["events"][index]["type"]
@@ -195,7 +198,7 @@ class Template(object):
 
                     i = 0
                     while i < p_event.eventDataNum:
-                        event_prop = self.__hub_handle.template_property()
+                        event_prop = self.__hub.template_property()
                         event_prop.key = params[i]["id"]
                         event_prop.type = params[i]["define"]["type"]
 
@@ -222,7 +225,7 @@ class Template(object):
                     inputs = cfg["actions"][index]["input"]
                     outputs = cfg["actions"][index]["output"]
 
-                    p_action = self.__hub_handle.template_action()
+                    p_action = self.__hub.template_action()
                     p_action.action_id = cfg["actions"][index]["id"]
                     p_action.input_num = len(inputs)
                     p_action.output_num = len(outputs)
@@ -230,7 +233,7 @@ class Template(object):
 
                     i = 0
                     while i < p_action.input_num:
-                        action_prop = self.__hub_handle.template_property()
+                        action_prop = self.__hub.template_property()
                         action_prop.key = inputs[i]["id"]
                         action_prop.type = inputs[i]["define"]["type"]
 
@@ -249,7 +252,7 @@ class Template(object):
 
                     i = 0
                     while i < p_action.output_num:
-                        action_prop = self.__hub_handle.template_property()
+                        action_prop = self.__hub.template_property()
                         action_prop.key = outputs[i]["id"]
                         action_prop.type = outputs[i]["define"]["type"]
 
@@ -273,7 +276,7 @@ class Template(object):
                 index = 0
                 while index < len(cfg["properties"]):
                     # 解析properties json
-                    p_prop = self.__hub_handle.template_property()
+                    p_prop = self.__hub.template_property()
                     p_prop.key = cfg["properties"][index]["id"]
                     p_prop.type = cfg["properties"][index]["define"]["type"]
 

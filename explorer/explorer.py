@@ -32,7 +32,8 @@ from enum import Enum
 from enum import IntEnum
 # from paho.mqtt.client import MQTTMessage
 from Crypto.Cipher import AES
-from hub.hub import QcloudHub
+# from hub.hub import QcloudHub
+from explorer.providers.providers import Providers
 from explorer.services.gateway.gateway import Gateway
 from explorer.services.template.template import Template
 
@@ -44,7 +45,9 @@ class QcloudExplorer(object):
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
 
-        self.__hub = QcloudHub(device_file, tls)
+        # self.__hub = QcloudHub(device_file, tls)
+        self.__provider = Providers(device_file, tls)
+        self.__hub = self.__provider.hub
 
         """ 用户回调注册到hub层 """
         # self.__register_hub_event_callback()
@@ -55,7 +58,8 @@ class QcloudExplorer(object):
 
         # 将hub句柄传入gateway,方便其直接使用hub提供的能力
         self.__gateway = Gateway(self.__hub, self.__logger)
-        self.__template = Template(self.__hub, self.__logger)
+        # self.__template = Template(self.__hub, self.__logger)
+        self.__template = Template(device_file, tls, self.__logger)
 
         # self.__device_file = self.__hub.DeviceInfo(device_file, self.__logger)
         self.__topic = self.__hub._topic
