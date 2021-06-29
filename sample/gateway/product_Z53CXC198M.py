@@ -14,7 +14,11 @@ topic_property_list = []
 topic_action_list = []
 topic_event_list = []
 
-def on_template_prop_changed(params, userdata):
+topic_property = None
+topic_action = None
+topic_event = None
+
+def _template_prop(params, userdata):
     print("product_002:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
 
     global g_te
@@ -39,12 +43,12 @@ def on_template_prop_changed(params, userdata):
     pass
 
 
-def on_template_event_post(payload, userdata):
+def _template_event_post(payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
 
-def on_template_action(payload, userdata):
+def _template_action(payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     global g_te
@@ -69,18 +73,14 @@ def on_template_action(payload, userdata):
     te.templateActionReply(clientToken, res, reply_param)
     pass
 
-def on_template_changed(message, userdata):
-    topic = message.topic
-    qos = message.qos
-    payload = json.loads(message.payload.decode('utf-8'))
+def on_template_changed(topic, qos, payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
-    tup = (topic, qos)
-    if tup in topic_property_list:
-        on_template_prop_changed(payload, userdata)
-    elif tup in topic_action_list:
-        on_template_action(payload, userdata)
-    elif tup in topic_event_list:
-        on_template_event_post(payload, userdata)
+    if topic == topic_property:
+        _template_prop(payload, userdata)
+    elif topic == topic_action:
+        _template_action(payload, userdata)
+    elif topic == topic_event:
+        _template_event_post(payload, userdata)
     else:
         print("unkonw topic %s" % topic)
 
@@ -90,27 +90,12 @@ def product_init(product_id, subdev_list, te):
     global g_te
     g_te = te
 
-    # 注册数据模板回调函数
-    # te.registerUserPropertyCallback(product_id, on_template_prop_changed)
-    # te.registerUserActionCallback(product_id, on_template_action)
-    # te.registerUserEventCallback(product_id, on_template_event_post)
-
-    te.templateSetup("./Z53CXC198M_config.json")
-
-    """
-    # 保存自身property list
-    prop_list = te.template_property_list
-    event_list = te.template_events_list
-    action_list = te.template_action_list
-    """
+    te.templateSetup("sample/gateway/Z53CXC198M_config.json")
 
     topic_property_format = "$thing/down/property/%s/%s"
     topic_action_format = "$thing/down/action/%s/%s"
     topic_event_format = "$thing/down/event/%s/%s"
 
-    # topic_property_list = []
-    # topic_action_list = []
-    # topic_event_list = []
     for subdev in subdev_list:
 
         topic_property = topic_property_format % (product_id, subdev)
@@ -129,7 +114,7 @@ def product_init(product_id, subdev_list, te):
         te.registerUserCallback(topic_event, on_template_changed)
 
     """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
-    rc = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
+    rc, mid = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
     if rc == 0:
         print("gateway subdev subscribe success")
     else:
@@ -147,12 +132,12 @@ def product_init(product_id, subdev_list, te):
             "append_info": "your self define info"
         }
     }
-    rc = te.templateReportSysInfo(sys_info)
+    rc, mid = te.templateReportSysInfo(sys_info)
     if rc != 0:
         print("sysinfo report fail")
         return 1
 
-    rc = te.templateGetStatus()
+    rc, mid = te.templateGetStatus()
     if rc != 0:
         print("get status fail")
         return 1
