@@ -34,6 +34,7 @@ from hub.services.gateway.gateway import Gateway
 from hub.services.rrpc.rrpc import Rrpc
 from hub.services.broadcast.broadcast import Broadcast
 from hub.services.shadow.shadow import Shadow
+from hub.services.ota.ota import Ota
 
 class QcloudHub(object):
     """事件核心处理层
@@ -58,6 +59,14 @@ class QcloudHub(object):
         类似on_connect等explorer和用户层都可能注册的回调在hub层使用专门的函数与之对应
         """
         self.__explorer_callback = {}
+
+        """ 存放用户注册的回调函数 """
+        self.__user_callback = {}
+
+        """
+        保存__on_subscribe()返回的mid和qos对,用以判断订阅是否成功
+        """
+        self.__subscribe_res = {}
 
         self.__user_topics = {}
         self.__user_topics_subscribe_request = {}
@@ -85,6 +94,7 @@ class QcloudHub(object):
         self.__rrpc = Rrpc(self.__protocol, self._logger)
         self.__broadcast = Broadcast(self.__protocol, self._logger)
         self.__shadow = Shadow(self.__protocol, self._logger)
+        self.__ota = Ota(self._topic.ota_report_topic_pub, self.__protocol, self._logger)
 
     @property
     def user_on_connect(self):
@@ -199,106 +209,6 @@ class QcloudHub(object):
             self.code = -1
             self.status_msg = None
 
-    class OtaState(Enum):
-        IOT_OTAS_UNINITED = 0
-        IOT_OTAS_INITED = 1
-        IOT_OTAS_FETCHING = 2
-        IOT_OTAS_FETCHED = 3
-        IOT_OTAS_DISCONNECTED = 4
-
-    class OtaCmdType(Enum):
-        IOT_OTAG_FETCHED_SIZE = 0
-        IOT_OTAG_FILE_SIZE = 1
-        IOT_OTAG_MD5SUM = 2
-        IOT_OTAG_VERSION = 3
-        IOT_OTAG_CHECK_FIRMWARE = 4
-
-    class OtaProgressCode(Enum):
-        IOT_OTAP_BURN_FAILED = -4
-        IOT_OTAP_CHECK_FALIED = -3
-        IOT_OTAP_FETCH_FAILED = -2
-        IOT_OTAP_GENERAL_FAILED = -1
-        IOT_OTAP_FETCH_PERCENTAGE_MIN = 0
-        IOT_OTAP_FETCH_PERCENTAGE_MAX = 100
-
-    class OtaReportType(IntEnum):
-        IOT_OTAR_DOWNLOAD_TIMEOUT = -1
-        IOT_OTAR_FILE_NOT_EXIST = -2
-        IOT_OTAR_AUTH_FAIL = -3
-        IOT_OTAR_MD5_NOT_MATCH = -4
-        IOT_OTAR_UPGRADE_FAIL = -5
-        IOT_OTAR_NONE = 0
-        IOT_OTAR_DOWNLOAD_BEGIN = 1
-        IOT_OTAR_DOWNLOADING = 2
-        IOT_OTAR_UPGRADE_BEGIN = 3
-        IOT_OTAR_UPGRADE_SUCCESS = 4
-
-    # property结构
-    class template_property(object):
-        def __init__(self):
-            self.key = None
-            self.data = None
-            self.data_buff_len = 0
-            self.type = None
-
-    class template_action(object):
-        def __init__(self):
-            self.action_id = None
-            self.timestamp = 0
-            self.input_num = 0
-            self.output_num = 0
-            self.actions_input_prop = []
-            self.actions_output_prop = []
-
-        def action_input_append(self, prop):
-            self.actions_input_prop.append(prop)
-
-        def action_output_append(self, prop):
-            self.actions_output_prop.append(prop)
-
-    # event结构(sEvent)
-    class template_event(object):
-        def __init__(self):
-            self.event_name = None
-            self.type = None
-            self.timestamp = 0
-            self.eventDataNum = 0
-            self.events_prop = []
-
-        def event_append(self, prop):
-            self.events_prop.append(prop)
-
-    class ota_manage(object):
-        def __init__(self):
-            self.channel = None
-            self.state = 0
-            self.size_fetched = 0
-            self.size_last_fetched = 0
-            self.file_size = 0
-            self.purl = None
-            self.version = None
-            self.md5sum = None
-            self.md5 = None
-            self.host = None
-            self.is_https = False
-
-            self.report_timestamp = 0
-
-            # http连接管理
-            self.http_manager = None
-
-    class http_manage(object):
-        def __init__(self):
-            self.handle = None
-            self.request = None
-            self.header = None
-            self.host = None
-            self.https_context = None
-
-            self.err_reason = None
-            self.err_code = 0
-            pass
-
     def __assert(self, param):
         if param is None or len(param) == 0:
             raise ValueError('Invalid param.')
@@ -353,16 +263,22 @@ class QcloudHub(object):
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_event_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_action_topic_sub:
             # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_service_topic_sub:
             self._logger.info("--------Reserved: template service topic")
@@ -377,31 +293,61 @@ class QcloudHub(object):
             # 调用explorer向hub注册的回调处理
             self._logger.info("Reserved: template raw topic")
 
-        elif topic in self.__user_topics and self.__user_on_message is not None:
-            try:
-                self.__user_on_message(topic, payload, qos, self.__userdata)
-            except Exception as e:
-                self._logger.error("user_on_message process raise exception:%s" % e)
-            pass
+        elif topic in self.__user_topics:
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         elif topic == self._topic.template_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         elif topic == self._topic.sys_topic_sub:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         elif topic == self._topic.gateway_topic_sub:
             self.__gateway.handle_gateway(topic, payload)
+
         elif topic == self._topic.ota_update_topic_sub:
-            self.__handle_ota(topic, payload)
+            ptype = payload["type"]
+            if ptype == "report_version_rsp":
+                """
+                1.用户基于hub层接入,直接回调用户的注册函数
+                2.用户基于explorer层接入,回调explorer的注册函数,由exporer调用用户的注册函数
+                """
+                if self.__user_callback[topic] is not None:
+                    self.__user_callback[topic](topic, qos, payload, self.__userdata)
+                elif self.__user_callback[topic] is not None:
+                    self.__user_callback[topic](topic, qos, payload, self.__userdata)
+
+            elif ptype == "update_firmware":
+                self.__ota.handle_ota(topic, payload)
+
         elif self._topic.rrpc_topic_sub_prefix in topic:
             self.__rrpc.handle_rrpc(topic, payload)
-            try:
-                self.__user_on_message(topic, payload, qos, self.__userdata)
-            except Exception as e:
-                self._logger.error("user_on_message process raise exception:%s" % e)
-            pass
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         elif self._topic.shadow_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         elif self._topic.broadcast_topic_sub in topic:
-            self.__user_on_message(topic, payload, qos, self.__userdata)
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
+
         else:
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
@@ -470,7 +416,7 @@ class QcloudHub(object):
     def __on_subscribe(self, client, user_data, mid, granted_qos):
         qos = granted_qos[0]
         # todo:mid,qos
-        # self.__ota_subscribe_res[mid] = qos
+        self.__subscribe_res[mid] = qos
         self.__event_worker._thread.post_message(self.__event_worker.EventPool.SUBSCRISE, (qos, mid))
 
     def __on_unsubscribe(self, client, user_data, mid):
@@ -509,6 +455,12 @@ class QcloudHub(object):
                 continue
             self.__protocol.loop()
         pass
+
+    def registerUserCallback(self, topic, callback):
+        """
+        用户注册回调接口
+        """
+        self.__user_callback[topic] = callback
 
     def enableLogger(self, level):
         self._logger.set_level(level)
@@ -858,8 +810,83 @@ class QcloudHub(object):
     def shadowJsonConstructReport(self, *args):
         return self.__shadow.shadow_json_construct_report(self.__device_info.product_id, args)
 
-        
-        
-    
+    def otaInit(self):
+        if self.__hub_state is not self.HubState.CONNECTED:
+            raise self.StateError("current state is not CONNECTED")
 
+        ota_topic_sub = self._topic.ota_update_topic_sub
+        rc, mid = self.__ota.ota_init(ota_topic_sub, 1)
+        if rc != 0:
+            self._logger.error("[ota] subscribe error:rc:%d,topic:%s" % (rc, ota_topic_sub))
+            return rc, mid
 
+        """
+        等待订阅成功
+        """
+        cnt = 0
+        while cnt < 10:
+            if mid in self.__subscribe_res:
+                # 收到该mid回调,且其qos>=0说明订阅完成,qos=0需另做判断
+                if self.__subscribe_res[mid] >= 1:
+                    break
+            time.sleep(0.2)
+            cnt += 1
+            pass
+        if cnt >= 10:
+            return -1, mid
+
+        self.__ota.ota_manager_init()
+
+        return rc, mid
+
+    # 是否应将ota句柄传入(支持多个下载进程?)
+    def otaIsFetching(self):
+        return self.__ota.ota_is_fetching()
+
+    def otaIsFetchFinished(self):
+        return self.__ota.ota_is_fetch_finished()
+
+    def otaReportUpgradeSuccess(self, version):
+        rc, mid = self.__ota.ota_report_upgrade_success(version)
+        if rc != 0:
+            self._logger.error("ota report upgrade(success) fail")
+        return rc, mid
+
+    def otaReportUpgradeFail(self, version):
+        rc, mid = self.__ota.ota_report_upgrade_fail(version)
+        if rc != 0:
+            self._logger.error("ota report upgrade(fail) fail")
+        return rc, mid
+
+    def otaIoctlNumber(self, cmdType):
+        return self.__ota.ota_ioctl_number(cmdType)
+
+    def otaIoctlString(self, cmdType, length):
+        return self.__ota.ota_ioctl_string(cmdType, length)
+
+    def otaResetMd5(self):
+        return self.__ota.ota_reset_md5()
+
+    def otaMd5Update(self, buf):
+        return self.__ota.ota_md5_update(buf)
+
+    def __ota_http_deinit(self, http):
+        print("__ota_http_deinit do nothing")
+
+    def httpInit(self, host, url, offset, size, timeoutSec):
+        return self.__ota.http_init(host, url, offset, size, timeoutSec)
+
+    def httpFetch(self, buf_len):
+        return self.__ota.http_fetch(buf_len)
+
+    def otaReportVersion(self, version):
+        rc, mid = self.__ota.ota_report_version(version)
+        if rc != 0:
+            self._logger.error("[ota] report version fail")
+        return rc, mid
+
+    def otaDownloadStart(self, offset, size):
+        return self.__ota.ota_download_start(offset, size)
+
+    def otaFetchYield(self, buf_len):
+        return self.__ota.ota_fetch_yield(buf_len)
