@@ -31,7 +31,9 @@ from hub.utils.providers import DeviceInfoProvider
 from hub.protocol.protocol import AsyncConnClient
 from hub.manager.manager import TaskManager
 from hub.services.gateway.gateway import Gateway
-
+from hub.services.rrpc.rrpc import Rrpc
+from hub.services.broadcast.broadcast import Broadcast
+from hub.services.shadow.shadow import Shadow
 
 class QcloudHub(object):
     """事件核心处理层
@@ -79,6 +81,10 @@ class QcloudHub(object):
         self.__user_on_message = None
 
         self.__protocol_init(domain, useWebsocket)
+
+        self.__rrpc = Rrpc(self.__protocol, self._logger)
+        self.__broadcast = Broadcast(self.__protocol, self._logger)
+        self.__shadow = Shadow(self.__protocol, self._logger)
 
     @property
     def user_on_connect(self):
@@ -386,7 +392,12 @@ class QcloudHub(object):
         elif topic == self._topic.ota_update_topic_sub:
             self.__handle_ota(topic, payload)
         elif self._topic.rrpc_topic_sub_prefix in topic:
-            self.__handle_rrpc(topic, payload)
+            self.__rrpc.handle_rrpc(topic, payload)
+            try:
+                self.__user_on_message(topic, payload, qos, self.__userdata)
+            except Exception as e:
+                self._logger.error("user_on_message process raise exception:%s" % e)
+            pass
         elif self._topic.shadow_topic_sub in topic:
             self.__user_on_message(topic, payload, qos, self.__userdata)
         elif self._topic.broadcast_topic_sub in topic:
@@ -789,6 +800,63 @@ class QcloudHub(object):
         gateway_topic_sub = self._topic.gateway_topic_sub
 
         return self.__gateway.gateway_init(gateway_topic_sub, 0, json_data)
+
+    def rrpcInit(self):
+        if self.__hub_state is not self.HubState.CONNECTED:
+            raise self.StateError("current state is not CONNECTED")
+
+        rrpc_topic_sub = self._topic.rrpc_topic_sub_prefix + "+"
+        rc, mid = self.__rrpc.rrpc_init(rrpc_topic_sub, 0)
+        if rc != 0:
+            self._logger.error("[rrpc] subscribe error:rc:%d,topic:%s" % (rc, rrpc_topic_sub))
+        return rc, mid
+
+    def rrpcReply(self, reply, length):
+        topic_prefix = self._topic.rrpc_topic_pub_prefix
+        rc, mid = self.__rrpc.rrpc_reply(topic_prefix, 0, reply)
+        if rc != 0:
+            self._logger.error("[rrpc] publish error:rc:%d,topic:%s" % (rc, topic_prefix))
+        return rc, mid
+    
+    def broadcastInit(self):
+        if self.__hub_state is not self.HubState.CONNECTED:
+            raise self.StateError("current state is not CONNECTED")
+
+        broadcast_topic_sub = self._topic.broadcast_topic_sub
+        rc, mid = self.__broadcast.broadcast_init(broadcast_topic_sub, 0)
+        if rc != 0:
+            self._logger.error("[broadcast] publish error:rc:%d,topic:%s" % (rc, broadcast_topic_sub))
+        return rc, mid
+
+    def shadowInit(self):
+        if self.__hub_state is not self.HubState.CONNECTED:
+            raise self.StateError("current state is not CONNECTED")
+
+        shadow_topic_sub = self._topic.shadow_topic_sub
+        rc, mid = self.__shadow.shadow_init(shadow_topic_sub, 0)
+        if rc != 0:
+            self._logger.error("[shadow] publish error:rc:%d,topic:%s" % (rc, shadow_topic_sub))
+        return rc, mid
+
+    def getShadow(self):
+        topic_pub = self._topic.shadow_topic_pub
+        rc, mid = self.__shadow.get_shadow(topic_pub, 0, self.__device_info.product_id)
+        if rc != 0:
+            self._logger.error("[shadow] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+        return rc, mid
+
+    def shadowJsonConstructDesireNull(self):
+        return self.__shadow.shadow_json_construct_desire_null(self.__device_info.product_id)
+
+    def shadowUpdate(self, shadow_docs, length):
+        topic = self._topic.shadow_topic_pub
+        rc, mid = self.__shadow.shadow_update(topic, 0, shadow_docs)
+        if rc != 0:
+            self._logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+        return rc, mid
+
+    def shadowJsonConstructReport(self, *args):
+        return self.__shadow.shadow_json_construct_report(self.__device_info.product_id, args)
 
         
         
