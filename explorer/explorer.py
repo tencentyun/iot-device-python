@@ -59,7 +59,9 @@ class QcloudExplorer(object):
         # 将hub句柄传入gateway,方便其直接使用hub提供的能力
         self.__gateway = Gateway(self.__hub, self.__logger)
         # self.__template = Template(self.__hub, self.__logger)
+        
         self.__template = Template(device_file, tls, self.__logger)
+        self.__template_list = {}
 
         self.__topic = self.__hub._topic
 
@@ -96,18 +98,6 @@ class QcloudExplorer(object):
 
         # ota
         self.__user_on_ota_report = None
-
-        # rrpc callback
-        self.__user_on_rrpc_message = None
-        self.__process_id = None
-
-        # shadow
-        self._shadow_token_num = 0
-
-        # construct thread handle
-        # self.__loop_thread = self.__hub.LoopThread(self.__logger)
-        # self.__user_thread = self.__hub.UserCallBackTask(self.__logger)
-        # self.__user_cmd_cb_init()
 
         pass
 
@@ -187,40 +177,6 @@ class QcloudExplorer(object):
     @user_on_rrpc_message.setter
     def user_on_rrpc_message(self, value):
         self.__user_on_rrpc_message = value
-
-    """
-    @property
-    def on_template_prop_changed(self):
-        return self.__on_template_prop_changed
-
-    @on_template_prop_changed.setter
-    def on_template_prop_changed(self, value):
-        self.__on_template_prop_changed = value
-
-    @property
-    def on_template_action(self):
-        return self.__on_template_action
-
-    @on_template_action.setter
-    def on_template_action(self, value):
-        self.__on_template_action = value
-
-    @property
-    def on_template_event_post(self):
-        return self.__on_template_event_post
-
-    @on_template_event_post.setter
-    def on_template_event_post(self, value):
-        self.__on_template_event_post = value
-
-    @property
-    def on_subscribe_service_post(self):
-        return self.__on_subscribe_service_post
-
-    @on_subscribe_service_post.setter
-    def on_subscribe_service_post(self, value):
-        self.__on_subscribe_service_post = value
-    """
 
     # 处理从hub层调用的回调
     def __hub_on_connect(self, value):
@@ -312,24 +268,6 @@ class QcloudExplorer(object):
         elif ptype == "update_firmware":
             self.__ota_info_get(payload)
 
-    def __rrpc_get_process_id(self, topic):
-        pos = topic.rfind("/")
-        if pos > 0:
-            self.__process_id = topic[pos + 1:len(topic)]
-            return 0
-        else:
-            self.__logger.error("cannot found process id from topic:%s" % topic)
-            return -1
-
-    def __handle_rrpc(self, topic, payload):
-        rc = self.__rrpc_get_process_id(topic)
-        if rc < 0:
-            raise self.__hub.StateError("cannot found process id")
-
-        # 调用用户注册的回调
-        if self.__user_on_rrpc_message is not None:
-            self.__user_on_rrpc_message(payload, self.__userdata)
-
     def enableLogger(self, level):
         return self.__hub.enableLogger(level)
 
@@ -420,7 +358,7 @@ class QcloudExplorer(object):
     def templateJsonConstructReportArray(self, payload):
         return self.__template.template_json_construct_report_array(self.__hub.getProductID(), payload)
 
-    def templateReportSysInfo(self, sysInfo):
+    def templateReportSysInfo(self, productId, deviceNae, sysInfo):
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -479,6 +417,11 @@ class QcloudExplorer(object):
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
+        """
+        构造对应client的template对象并加入字典
+        """
+        # template = Template(device_file, tls, self.__logger)
+
         rc, mid = self.__template.template_init(self.__topic.template_property_topic_sub,
                                         self.__topic.template_action_topic_sub,
                                         self.__topic.template_event_topic_sub,
@@ -488,7 +431,6 @@ class QcloudExplorer(object):
 
         self.__is_subscribed_property_topic = True
         return rc, mid
-
 
     def clearControl(self):
         topic_pub = self.__topic.template_property_topic_pub
@@ -921,123 +863,7 @@ class QcloudExplorer(object):
 
         return buf, rv_len
 
-
-    def rrpcInit(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
-            raise self.__hub.StateError("current state is not CONNECTED")
-
-        rrpc_topic_sub = self.__topic.rrpc_topic_sub_prefix + "+"
-        sub_res, mid = self.subscribe(rrpc_topic_sub, 0)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, rrpc_topic_sub))
-            return 1
-        # 判断订阅是否成功(qos0)
-        return 0
-
-    def rrpcReply(self, reply, length):
-        if reply is None or length == 0:
-            raise ValueError('Invalid length.')
-        if self.__process_id is None:
-            raise ValueError('no process id')
-        topic = self.__topic.rrpc_topic_pub_prefix + self.__process_id
-        rc, mid = self.publish(topic, reply, 0)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
-            return -1, mid
-        return rc, mid
-
-    def shadowInit(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
-            raise self.__hub.StateError("current state is not connect")
-
-        shadow_topic_sub = self.__topic.shadow_topic_sub
-        sub_res, mid = self.subscribe(shadow_topic_sub, 0)
-        if sub_res != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (sub_res, shadow_topic_sub))
-            return -1
-        return 0
-
-    def getShadow(self):
-        topic_pub = self.__topic.shadow_topic_pub
-
-        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
-        self._shadow_token_num += 1
-
-        message = {
-            "type": "get",
-            "clientToken": client_token
-        }
-        rc, mid = self.publish(topic_pub, message, 0)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic_pub))
-            return -1, mid
-        return rc, mid
-    
-    def shadowJsonConstructDesireNull(self):
-        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
-        self._shadow_token_num += 1
-        json_out = {
-            "type": "update",
-            "state": {
-                "desired": None
-            },
-            "clientToken": client_token
-        }
-        return json_out
-
-    def shadowUpdate(self, shadow_docs, length):
-        if shadow_docs is None or length == 0:
-            raise ValueError('Invalid length.')
-        topic = self.__topic.shadow_topic_pub
-        rc, mid = self.publish(topic, shadow_docs, 0)
-        if rc != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
-            return -1, mid
-        return rc, mid
-
-    def shadowJsonConstructReport(self, *args):
-        format_string = '"%s":"%s"'
-        format_int = '"%s":%d'
-        report_string = '{"type": "update", "state": {"reported": {'
-        arg_cnt = 0
-
-        for arg in args:
-            arg_cnt += 1
-            if arg.type == "int" or arg.type == "float":
-                report_string += format_int % (arg.key, arg.data)
-            elif arg.type == "string":
-                report_string += format_string % (arg.key, arg.data)
-            else:
-                self.__logger.error("type not support")
-                arg.data = " "
-            if arg_cnt < len(args):
-                report_string += ","
-        pass
-        report_string += '}}, "clientToken": "%s"}'
-
-        client_token = self.__device_file.product_id + "-" + str(self._shadow_token_num)
-        self._shadow_token_num += 1
-
-        report_out = report_string % (client_token)
-        json_out = json.loads(report_out)
-
-        return json_out
-
-    def broadcastInit(self):
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
-            raise self.__hub.StateError("current state is not connect")
-
-        broadcast_topic_sub = self.__topic.broadcast_topic_sub
-        sub_res, mid = self.subscribe(broadcast_topic_sub, 0)
-        if sub_res != 0:
-            self.__logger.error("topic_publish error:rc:%d,topic:%s" % (sub_res, broadcast_topic_sub))
-            return -1
-        return 0
-
     def subscribeInit(self):
-
-        if self.__explorer_state is not self.__hub.HubState.CONNECTED:
-            raise self.__hub.StateError("current state is not CONNECTED")
 
         subscribe_topic_sub = self.__topic.template_service_topic_sub
         sub_res, mid = self.subscribe(subscribe_topic_sub, 1)
