@@ -13,18 +13,59 @@
 
 import json
 from explorer.providers.providers import Providers
+from hub.utils.providers import TopicProvider
 
 class Template(object):
-    def __init__(self, device_file, tls, logger=None):
+    def __init__(self, device_file, tls, productId, deviceName, logger=None):
         self.__logger = logger
         self.__provider = Providers(device_file, tls)
         self.__hub = self.__provider.hub
+
+        self.__topic = TopicProvider(productId, deviceName)
         self._template_token_num = 0
 
         self.__template_events_list = []
         self.__template_action_list = []
         self.__template_property_list = []
         self.__template_setup_state = False
+
+        # data template reply
+        self.__replyAck = -1
+
+    # property结构
+    class template_property(object):
+        def __init__(self):
+            self.key = None
+            self.data = None
+            self.data_buff_len = 0
+            self.type = None
+
+    class template_action(object):
+        def __init__(self):
+            self.action_id = None
+            self.timestamp = 0
+            self.input_num = 0
+            self.output_num = 0
+            self.actions_input_prop = []
+            self.actions_output_prop = []
+
+        def action_input_append(self, prop):
+            self.actions_input_prop.append(prop)
+
+        def action_output_append(self, prop):
+            self.actions_output_prop.append(prop)
+
+    # event结构(sEvent)
+    class template_event(object):
+        def __init__(self):
+            self.event_name = None
+            self.type = None
+            self.timestamp = 0
+            self.eventDataNum = 0
+            self.events_prop = []
+
+        def event_append(self, prop):
+            self.events_prop.append(prop)
 
     def __assert(self, param):
         if param is None or len(param) == 0:
@@ -83,6 +124,31 @@ class Template(object):
 
         return info_out
 
+    def __handle_reply(self, method, payload):
+        clientToken = payload["clientToken"]
+        replyAck = payload["code"]
+        if method == "get_status_reply":
+            if replyAck == 0:
+                # update client token
+                self.__topic.control_clientToken = clientToken
+            else:
+                self.__replyAck = replyAck
+                self.__logger.debug("replyAck:%d" % replyAck)
+        else:
+            self.__replyAck = replyAck
+        pass
+
+    def __handle_control(self, payload):
+        clientToken = payload["clientToken"]
+        self.__topic.control_clientToken = clientToken
+
+    def __handle_property(self, payload):
+        method = payload["method"]
+        if method == "control":
+            self.__handle_control(payload)
+        else:
+            self.__handle_reply(method, payload)
+
     def get_events_list(self):
         return self.__template_events_list
 
@@ -92,61 +158,64 @@ class Template(object):
     def get_property_list(self):
         return self.__template_property_list
 
-    def template_deinit(self, topic):
-        self.__assert(topic)
-        return self.__hub.unsubscribe(topic)
+    def handle_template(self, topic, payload):
+        if topic == self.__topic.template_property_topic_sub:
+            # __handle_reply回调到用户，由用户调用clearContrl()
+            self.__handle_property(payload)
 
-    def template_init(self, property_topic, action_topic, event_topic, callback):
+    def template_deinit(self):
         topic_list = []
-        topic_list.append(property_topic)
-        topic_list.append(action_topic)
-        topic_list.append(event_topic)
+        topic_list.append(self.__topic.template_property_topic_sub)
+        topic_list.append(self.__topic.template_event_topic_sub)
+        topic_list.append(self.__topic.template_action_topic_sub)
+        return self.__hub.unsubscribe(topic_list)
+
+    def template_init(self, callback):
+        topic_list = []
+        topic_list.append(self.__topic.template_property_topic_sub)
+        topic_list.append(self.__topic.template_action_topic_sub)
+        topic_list.append(self.__topic.template_event_topic_sub)
+
         self.__hub.register_explorer_callback(topic_list, callback)
 
         topic_list.clear()
-        topic_list.append((property_topic, 0))
-        topic_list.append((action_topic, 0))
-        topic_list.append((event_topic, 0))
+        topic_list.append((self.__topic.template_property_topic_sub, 0))
+        topic_list.append((self.__topic.template_action_topic_sub, 0))
+        topic_list.append((self.__topic.template_event_topic_sub, 0))
         return self.__hub.subscribe(topic_list, 0)
 
-    def template_report(self, topic, qos, message):
-        if message is None or len(message) == 0:
-            raise ValueError('Invalid message.')
-        return self.__hub.publish(topic, message, qos)
+    def template_report(self, message):
+        self.__assert(message)
+        return self.__hub.publish(self.__topic.template_property_topic_pub, message, 0)
 
-    def template_get_status(self, topic, id):
+    def template_get_status(self, id):
         token = self.__build_empty_json(id, "get_status")
-        return self.__hub.publish(topic, token, 0)
+        return self.__hub.publish(self.__topic.template_property_topic_pub, token, 0)
 
-    def template_action_reply(self, topic, qos, clientToken, response, replyPara):
-        self.__assert(topic)
+    def template_action_reply(self, clientToken, response, replyPara):
         self.__assert(clientToken)
         self.__assert(response)
         json_out = self.__build_action_reply(clientToken, response, replyPara)
-        return self.__hub.publish(topic, json_out, qos)
+        return self.__hub.publish(self.__topic.template_action_topic_pub, json_out, 0)
 
     # IOT_Template_ClearControl
-    def template_clear_control(self, topic, qos, clientToken):
-        self.__assert(topic)
+    def template_clear_control(self, clientToken):
         self.__assert(clientToken)
         message = {
             "method": "clear_control",
             "clientToken": clientToken
         }
-        return self.__hub.publish(topic, message, qos)
+        return self.__hub.publish(self.__topic.template_property_topic_pub, message, 0)
 
-    def template_control_reply(self, topic, qos, token, replyPara):
-        self.__assert(topic)
-        # self.__assert(replyPara)
-        json_out = self.__build_control_reply(token, replyPara)
-        return self.__hub.publish(topic, json_out, qos)
+    def template_control_reply(self, replyPara):
+        json_out = self.__build_control_reply(self.__topic.control_clientToken, replyPara)
+        return self.__hub.publish(self.__topic.template_property_topic_pub, json_out, 0)
 
-    def template_report_sys_info(self, topic, qos, pid, sysInfo):
-        self.__assert(topic)
+    def template_report_sys_info(self, pid, sysInfo):
         self.__assert(sysInfo)
 
         json_out = self.__json_construct_sysinfo(pid, sysInfo)
-        return self.__hub.publish(topic, json_out, qos)
+        return self.__hub.publish(self.__topic.template_property_topic_pub, json_out, 0)
 
     def template_json_construct_report_array(self, pid, payload):
         self.__assert(pid)
@@ -162,8 +231,7 @@ class Template(object):
 
         return json_out
 
-    def template_event_post(self, topic, qos, pid, message):
-        self.__assert(topic)
+    def template_event_post(self, pid, message):
         self.__assert(pid)
         self.__assert(message)
 
@@ -175,7 +243,7 @@ class Template(object):
             "clientToken": client_token,
             "events": events
         }
-        return self.__hub.publish(topic, json_out, qos)
+        return self.__hub.publish(self.__topic.template_event_topic_pub, json_out, 1)
 
     def template_setup(self, config_file=None):
         if self.__template_setup_state:
@@ -188,7 +256,7 @@ class Template(object):
                     # 解析events json
                     params = cfg["events"][index]["params"]
 
-                    p_event = self.__hub.template_event()
+                    p_event = self.template_event()
 
                     p_event.event_name = cfg["events"][index]["id"]
                     p_event.type = cfg["events"][index]["type"]
@@ -197,7 +265,7 @@ class Template(object):
 
                     i = 0
                     while i < p_event.eventDataNum:
-                        event_prop = self.__hub.template_property()
+                        event_prop = self.template_property()
                         event_prop.key = params[i]["id"]
                         event_prop.type = params[i]["define"]["type"]
 
@@ -224,7 +292,7 @@ class Template(object):
                     inputs = cfg["actions"][index]["input"]
                     outputs = cfg["actions"][index]["output"]
 
-                    p_action = self.__hub.template_action()
+                    p_action = self.template_action()
                     p_action.action_id = cfg["actions"][index]["id"]
                     p_action.input_num = len(inputs)
                     p_action.output_num = len(outputs)
@@ -232,7 +300,7 @@ class Template(object):
 
                     i = 0
                     while i < p_action.input_num:
-                        action_prop = self.__hub.template_property()
+                        action_prop = self.template_property()
                         action_prop.key = inputs[i]["id"]
                         action_prop.type = inputs[i]["define"]["type"]
 
@@ -251,7 +319,7 @@ class Template(object):
 
                     i = 0
                     while i < p_action.output_num:
-                        action_prop = self.__hub.template_property()
+                        action_prop = self.template_property()
                         action_prop.key = outputs[i]["id"]
                         action_prop.type = outputs[i]["define"]["type"]
 
@@ -275,7 +343,7 @@ class Template(object):
                 index = 0
                 while index < len(cfg["properties"]):
                     # 解析properties json
-                    p_prop = self.__hub.template_property()
+                    p_prop = self.template_property()
                     p_prop.key = cfg["properties"][index]["id"]
                     p_prop.type = cfg["properties"][index]["define"]["type"]
 

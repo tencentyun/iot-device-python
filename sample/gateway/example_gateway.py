@@ -7,10 +7,8 @@ from explorer import explorer
 # hub网关测试
 # from hub.hub import QcloudHub
 
-# from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
-# from gateway import product_Z53CXC198M as product_Z53CXC198M
-import product_ZPHBLEB4J5
-import product_Z53CXC198M
+from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
+from gateway import product_Z53CXC198M as product_Z53CXC198M
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -86,17 +84,10 @@ def example_gateway():
 
     global te
     te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-    te.enableLogger(logging.DEBUG)
+    te.enableLogger(logging.WARNING)
 
     print("\033[1;36m gateway test start...\033[0m")
 
-    # te.user_on_connect = on_connect
-    # te.user_on_disconnect = on_disconnect
-    # te.user_on_message = on_message
-    # te.user_on_publish = on_publish
-    # te.user_on_subscribe = on_subscribe
-    # te.user_on_unsubscribe = on_unsubscribe
-    # te.mqttInit(mqtt_domain="")
     te.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)
@@ -116,10 +107,8 @@ def example_gateway():
             time.sleep(1)
             count += 1
 
-
     te.gatewayInit()
 
-    # 获取到子设备信息后,在此维护设备状态,sdk中不处理设备状态
     subdev_list = te.gatewaySubdevGetConfigList()
 
     while True:
@@ -133,7 +122,6 @@ def example_gateway():
                     if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is not True:
                         rc, mid = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            # subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_ONLINE
                             te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "online")
                             print("online success")
                         else:
@@ -144,21 +132,20 @@ def example_gateway():
                     if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is True:
                         rc, mid = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
                         if rc == 0:
-                            # subdev.session_status = QcloudHub.SessionState.SUBDEV_SEESION_STATUS_OFFLINE
                             te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "offline")
                             print("offline success")
                         else:
                             print("offline fail")
 
             elif msg == "3":
-                rc, mid = te.gatewaySubdevBind("Z53CXC198M", "dev1", "bPAufp95WWaGF+fXa4bCxA==")
+                rc, mid = te.gatewaySubdevBind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME", "SUBDEV_DEVICE_SECRET")
                 if rc == 0:
                     print("bind success")
                 else:
                     print("bind fail")
 
             elif msg == "4":
-                rc, mid = te.gatewaySubdevUnbind("Z53CXC198M", "dev1")
+                rc, mid = te.gatewaySubdevUnbind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME")
                 if rc == 0:
                     print("unbind success")
                 else:

@@ -11,9 +11,7 @@ g_te = None
 g_property_params = None
 g_control_msg_arrived = False
 
-topic_property_list = []
-topic_action_list = []
-topic_event_list = []
+topic_list = []
 
 topic_property = None
 topic_action = None
@@ -34,12 +32,12 @@ def _template_prop(params, userdata):
     # deal down stream
 
     # 测试,实际应发送用户属性数据
-    reply_param = te.sReplyPara()
+    reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
-    te.templateControlReply(reply_param)
+    te.templateControlReply(product_id, device_name, reply_param)
 
     pass
 
@@ -57,13 +55,7 @@ def _template_action(payload, userdata):
 
     clientToken = payload["clientToken"]
 
-    """
-    actionId = payload["actionId"]
-    timestamp = payload["timestamp"]
-    params = payload["params"]
-    """
-
-    reply_param = te.sReplyPara()
+    reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = "action execute success!"
@@ -71,11 +63,15 @@ def _template_action(payload, userdata):
         "err_code": 0
     }
 
-    te.templateActionReply(clientToken, res, reply_param)
+    te.templateActionReply(product_id, device_name, clientToken, res, reply_param)
     pass
 
 def on_template_changed(topic, qos, payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    global topic_property
+    global topic_action
+    global topic_event
+
     if topic == topic_property:
         _template_prop(payload, userdata)
     elif topic == topic_action:
@@ -85,41 +81,53 @@ def on_template_changed(topic, qos, payload, userdata):
     else:
         print("unkonw topic %s" % topic)
 
-def product_init(product_id, subdev_list, te):
+def product_init(pid, subdev_list, te):
 
-    print("product_001:=========%s==========" % product_id)
+    print("product_001:=========%s==========" % pid)
     global g_te
     g_te = te
 
-    te.templateSetup("sample/gateway/ZPHBLEB4J5_config.json")
+    subdev = subdev_list[0]
+    global product_id
+    global device_name
+    product_id = pid
+    device_name = subdev
 
-    topic_property_format = "$thing/down/property/%s/%s"
-    topic_action_format = "$thing/down/action/%s/%s"
-    topic_event_format = "$thing/down/event/%s/%s"
+    global topic_property
+    global topic_action
+    global topic_event
+    topic_property = "$thing/down/property/%s/%s" % (product_id, device_name)
+    topic_action = "$thing/down/action/%s/%s" % (product_id, device_name)
+    topic_event = "$thing/down/event/%s/%s" % (product_id, device_name)
+    te.registerUserCallback(topic_property, on_template_changed)
+    te.registerUserCallback(topic_action, on_template_changed)
+    te.registerUserCallback(topic_event, on_template_changed)
 
-    for subdev in subdev_list:
+    """
+    订阅网关子设备topic
+    """
+    topic_format = "%s/%s/%s"
+    topic_data = topic_format % (product_id, device_name, "data")
+    topic_list.append((topic_data, 0))
+    """ 注册topic对应回调 """
+    te.registerUserCallback(topic_data, on_template_changed)
 
-        topic_property = topic_property_format % (product_id, subdev)
-        topic_property_list.append((topic_property, 0))
-        """ 注册topic对应回调 """
-        te.registerUserCallback(topic_property, on_template_changed)
-
-        topic_action = topic_action_format % (product_id, subdev)
-        topic_action_list.append((topic_action, 0))
-        """ 注册topic对应回调 """
-        te.registerUserCallback(topic_action, on_template_changed)
-
-        topic_event = topic_event_format % (product_id, subdev)
-        topic_event_list.append((topic_event, 0))
-        """ 注册topic对应回调 """
-        te.registerUserCallback(topic_event, on_template_changed)
+    topic_control = topic_format % (product_id, device_name, "control")
+    topic_list.append((topic_control, 0))
+    """ 注册topic对应回调 """
+    te.registerUserCallback(topic_control, on_template_changed)
 
     """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
-    rc, mid = te.gatewaySubdevSubscribe(product_id, topic_property_list, topic_action_list, topic_event_list)
+    rc, mid = te.gatewaySubdevSubscribe(topic_list)
     if rc == 0:
         print("gateway subdev subscribe success")
     else:
         print("gateway subdev subscribe fail")
+
+    
+
+    te.templateInit(product_id, device_name)
+    te.templateSetup(product_id, device_name, "sample/gateway/ZPHBLEB4J5_config.json")
 
     # sysinfo report
     sys_info = {
@@ -133,33 +141,26 @@ def product_init(product_id, subdev_list, te):
             "append_info": "your self define info"
         }
     }
-    rc, mid = te.templateReportSysInfo(sys_info)
+    rc, mid = te.templateReportSysInfo(product_id, device_name, sys_info)
     if rc != 0:
         print("sysinfo report fail")
         return 1
 
-    rc, mid = te.templateGetStatus()
+    rc, mid = te.templateGetStatus(product_id, device_name)
     if rc != 0:
         print("get status fail")
         return 1
 
     while te.isMqttConnected():
+        prop_list = te.getPropertyList(product_id, device_name)
+        reports = {
+            prop_list[0].key: prop_list[0].data,
+            prop_list[1].key: prop_list[1].data,
+            prop_list[2].key: prop_list[2].data,
+            prop_list[3].key: prop_list[3].data
+        }
 
-        # add user logic
-        """
-        if g_control_msg_arrived:
-            params_in = te.template_json_construct_report_array(g_property_params)
-            te.template_report(params_in)
-        else:
-            reports = {
-                prop_list[0].key: prop_list[0].data,
-                prop_list[1].key: prop_list[1].data,
-                prop_list[2].key: prop_list[2].data,
-                prop_list[3].key: prop_list[3].data
-            }
+        params_in = te.templateJsonConstructReportArray(product_id, device_name, reports)
+        te.templateReport(product_id, device_name, params_in)
 
-            params_in = te.template_json_construct_report_array(reports)
-            te.template_report(params_in)
-        """
-
-        time.sleep(1)
+        time.sleep(3)
