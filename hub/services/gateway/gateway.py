@@ -353,3 +353,11 @@ class Gateway(object):
         获取配置文件中的子设备列表
         """
         return self.gateway_subdev_config_list
+
+    def gateway_subdev_subscribe(self, topic):    
+        rc, mid = self.__protocol.subscribe(topic, 0)
+        if rc != 0:
+            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (rc, topic))
+            return rc, mid
+
+        return rc, mid
