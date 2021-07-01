@@ -13,6 +13,8 @@ te = None
 topic_property = None
 topic_action = None
 topic_event = None
+product_id = None
+device_name = None
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -64,7 +66,7 @@ def _template_prop(params, userdata):
     reply_param.status_msg = '\0'
 
     print("reply_param:%d" % reply_param.timeout_ms)
-    te.templateControlReply(reply_param)
+    te.templateControlReply(product_id, device_name, reply_param)
 
     pass
 
@@ -83,7 +85,7 @@ def _template_action(payload, userdata):
     params = payload["params"]
     """
     global te
-    reply_param = te.sReplyPara()
+    reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = "action execute success!"
@@ -91,7 +93,7 @@ def _template_action(payload, userdata):
         "err_code": 0
     }
 
-    te.templateActionReply(clientToken, res, reply_param)
+    te.templateActionReply(product_id, device_name, clientToken, res, reply_param)
     pass
 
 def on_template_changed(topic, qos, payload, userdata):
@@ -115,18 +117,21 @@ def example_template():
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)
 
+    global product_id
+    global device_name
+    product_id = te.getProductID()
+    device_name = te.getDeviceName()
     global topic_property
     global topic_action
     global topic_event
-    topic_property = "$thing/down/property/%s/%s" % (te.getProductID(), te.getDeviceName())
-    topic_action = "$thing/down/action/%s/%s" % (te.getProductID(), te.getDeviceName())
-    topic_event = "$thing/down/event/%s/%s" % (te.getProductID(), te.getDeviceName())
+    topic_property = "$thing/down/property/%s/%s" % (product_id, device_name)
+    topic_action = "$thing/down/action/%s/%s" % (product_id, device_name)
+    topic_event = "$thing/down/event/%s/%s" % (product_id, device_name)
 
     te.registerUserCallback(topic_property, on_template_changed)
     te.registerUserCallback(topic_action, on_template_changed)
     te.registerUserCallback(topic_event, on_template_changed)
 
-    te.templateSetup("sample/template/template_config.json")
     te.connect()
 
     count = 0
@@ -143,8 +148,8 @@ def example_template():
             time.sleep(1)
             count += 1
 
-
-    te.templateInit()
+    te.templateInit(product_id, device_name)
+    te.templateSetup(product_id, device_name, "sample/template/template_config.json")
 
     while True:
         try:
@@ -165,15 +170,15 @@ def example_template():
                         "append_info": "your self define info"
                     }
                 }
-                te.templateReportSysInfo(sys_info)
+                te.templateReportSysInfo(product_id, device_name, sys_info)
             elif msg == "2":
-                te.templateGetStatus()
+                te.templateGetStatus(product_id, device_name, )
             elif msg == "3":
                 if g_control_msg_arrived:
-                    params_in = te.templateJsonConstructReportArray(g_property_params)
-                    te.templateReport(params_in)
+                    params_in = te.templateJsonConstructReportArray(product_id, device_name, g_property_params)
+                    te.templateReport(product_id, device_name, params_in)
                 else:
-                    prop_list = te.getPropertyList()
+                    prop_list = te.getPropertyList(product_id, device_name)
                     reports = {
                         prop_list[0].key: prop_list[0].data,
                         prop_list[1].key: prop_list[1].data,
@@ -181,11 +186,11 @@ def example_template():
                         prop_list[3].key: prop_list[3].data
                     }
 
-                    params_in = te.templateJsonConstructReportArray(reports)
-                    te.templateReport(params_in)
+                    params_in = te.templateJsonConstructReportArray(product_id, device_name, reports)
+                    te.templateReport(product_id, device_name, params_in)
 
             elif msg == "4":
-                event_list = te.getEventsList()
+                event_list = te.getEventsList(product_id, device_name)
 
                 '''
                 for event in event_list:
@@ -232,16 +237,16 @@ def example_template():
                         }
                     ]
                 }
-                te.templateEventPost(events)
+                te.templateEventPost(product_id, device_name, events)
 
             elif msg == "5":
-                te.templateDeinit()
+                te.templateDeinit(product_id, device_name)
 
             elif msg == "6":
                 te.disconnect()
 
             elif msg == "7":
-                te.clearControl()
+                te.clearControl(product_id, device_name)
 
             else:
                 sys.exit()
@@ -249,5 +254,5 @@ def example_template():
     print("\033[1;36m template test success...\033[0m")
     return True
 
-if __name__ == '__main__':
-    example_template()
+# if __name__ == '__main__':
+#     example_template()
