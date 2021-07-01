@@ -226,13 +226,11 @@ class QcloudHub(object):
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_service_topic_sub:
-            self._logger.info("--------Reserved: template service topic")
-
-            try:
-                self.__on_subscribe_service_post(message, self.__userdata)
-            except Exception as e:
-                self._logger.error("__on_subscribe_service_post raise exception:%s" % e)
-            pass
+            # 回调到explorer层处理
+            if self.__explorer_callback[topic] is not None:
+                self.__explorer_callback[topic](topic, qos, payload)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_raw_topic_sub:
             # 调用explorer向hub注册的回调处理
@@ -609,12 +607,12 @@ class QcloudHub(object):
             "POST", "ap-guangzhou.gateway.tencentdevices.com",
             "/device/register", "", "hmacsha256", timestamp,
             nonce, request_hash)
+
         # sign_base64 = base64.b64encode(hmac.new(product_secret.encode("utf-8"),
         #                 sign_content.encode("utf-8"), hashlib.sha256).digest())
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
 
-        # self.__logger.debug('sign base64 {}'.format(sign_base64))
         header = {
             'Content-Type': 'application/json; charset=utf-8',
             "X-TC-Algorithm": "hmacsha256",
@@ -637,6 +635,7 @@ class QcloudHub(object):
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
+            print("reply:%s" % reply_obj)
             resp = reply_obj['Response']
             if 'Len' in resp and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]

@@ -175,6 +175,7 @@ class Template(object):
         topic_list.append(self.__topic.template_property_topic_sub)
         topic_list.append(self.__topic.template_action_topic_sub)
         topic_list.append(self.__topic.template_event_topic_sub)
+        topic_list.append(self.__topic.template_service_topic_sub)
 
         self.__hub.register_explorer_callback(topic_list, callback)
 
@@ -182,6 +183,7 @@ class Template(object):
         topic_list.append((self.__topic.template_property_topic_sub, 0))
         topic_list.append((self.__topic.template_action_topic_sub, 0))
         topic_list.append((self.__topic.template_event_topic_sub, 0))
+        topic_list.append((self.__topic.template_service_topic_sub, 1))
         return self.__hub.subscribe(topic_list, 0)
 
     def template_report(self, message):

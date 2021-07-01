@@ -491,14 +491,3 @@ class QcloudExplorer(object):
 
     def otaFetchYield(self, buf_len):
         return self.__hub.otaFetchYield(buf_len)
-
-    def subscribeInit(self):
-
-        subscribe_topic_sub = self.__topic.template_service_topic_sub
-        sub_res, mid = self.subscribe(subscribe_topic_sub, 1)
-        # should deal mid
-        self.__logger.debug("mid:%d" % mid)
-        if sub_res != 0:
-            self.__logger.error("topic_subscribe error:rc:%d,topic:%s" % (sub_res, subscribe_topic_sub))
-            return 1
-        return 0
