@@ -79,8 +79,8 @@ class QcloudHub(object):
         self.__register_event_callback()
         # self.__utils = Utils()
 
-        """存放通用回调
-        explorer和用户层都可能注册的回调在此存放
+        """
+        hub层注册到mqtt的回调
         """
         self.__user_on_connect = None
         self.__user_on_disconnect = None
@@ -95,60 +95,6 @@ class QcloudHub(object):
         self.__broadcast = Broadcast(self.__protocol, self._logger)
         self.__shadow = Shadow(self.__protocol, self._logger)
         self.__ota = Ota(self._topic.ota_report_topic_pub, self.__protocol, self._logger)
-
-    @property
-    def user_on_connect(self):
-        return self.__user_on_connect
-
-    @user_on_connect.setter
-    def user_on_connect(self, value):
-        self.__user_on_connect = value
-        pass
-
-    @property
-    def user_on_disconnect(self):
-        return self.__user_on_disconnect
-
-    @user_on_disconnect.setter
-    def user_on_disconnect(self, value):
-        self.__user_on_disconnect = value
-        pass
-
-    @property
-    def user_on_publish(self):
-        return self.__user_on_publish
-
-    @user_on_publish.setter
-    def user_on_publish(self, value):
-        self.__user_on_publish = value
-        pass
-
-    @property
-    def user_on_subscribe(self):
-        return self.__user_on_subscribe
-
-    @user_on_subscribe.setter
-    def user_on_subscribe(self, value):
-        self.__user_on_subscribe = value
-        pass
-
-    @property
-    def user_on_unsubscribe(self):
-        return self.__user_on_unsubscribe
-
-    @user_on_unsubscribe.setter
-    def user_on_unsubscribe(self, value):
-        self.__user_on_unsubscribe = value
-        pass
-
-    @property
-    def user_on_message(self):
-        return self.__user_on_message
-
-    @user_on_message.setter
-    def user_on_message(self, value):
-        self.__user_on_message = value
-        pass
 
     class HubState(Enum):
         """ 连接状态 """
@@ -256,8 +202,7 @@ class QcloudHub(object):
         qos = message.qos
         # mid = message.mid
         payload = json.loads(message.payload.decode('utf-8'))
-        print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
-        print("gateway sub topic :%s" % self._topic.gateway_topic_sub)
+        # print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
 
         if topic == self._topic.template_property_topic_sub:
             # 回调到explorer层处理
@@ -306,10 +251,12 @@ class QcloudHub(object):
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.sys_topic_sub:
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
+            # 获取时间暂作为内部服务，有message回调通知用户
+            self.__user_on_message(topic, qos, payload, self.__userdata)
+            # if self.__user_callback[topic] is not None:
+            #     self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            # else:
+            #     self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.gateway_topic_sub:
             self.__gateway.handle_gateway(topic, payload)
@@ -455,6 +402,19 @@ class QcloudHub(object):
                 continue
             self.__protocol.loop()
         pass
+
+    def registerMqttCallback(self, on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe):
+        """
+        注册用户层mqtt回调到hub层
+        """
+        self.__user_on_connect = on_connect
+        self.__user_on_disconnect = on_disconnect
+        self.__user_on_message = on_message
+        self.__user_on_publish = on_publish
+        self.__user_on_subscribe = on_subscribe
+        self.__user_on_unsubscribe = on_unsubscribe
 
     def registerUserCallback(self, topic, callback):
         """
@@ -741,6 +701,9 @@ class QcloudHub(object):
 
         gateway_topic_pub = self._topic.gateway_topic_pub
         return self.__gateway.gateway_get_subdev_bind_list(gateway_topic_pub, 0, product_id, device_name, bind_list)
+    
+    def gatewaySubdevSubscribe(self, topic):
+        return self.__gateway.gateway_subdev_subscribe(topic)
 
     def gatewayInit(self):
         if self.__hub_state is not self.HubState.CONNECTED:
