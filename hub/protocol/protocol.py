@@ -26,7 +26,8 @@ from hub.utils.codec import Codec
 
 class AsyncConnClient(object):
 
-    def __init__(self, host, product_id, device_name, device_secret, websocket=False, tls=True, logger=None):
+    def __init__(self, host, product_id, device_name, device_secret,
+                    websocket=False, tls=True, logger=None):
         self.__logger = logger
         self.__tls = tls
         self.__useWebsocket = websocket

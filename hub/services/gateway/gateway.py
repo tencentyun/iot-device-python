@@ -18,11 +18,15 @@ import json
 import random
 from enum import Enum
 from hub.utils.codec import Codec
+from hub.utils.providers import ConnClientProvider
 
 class Gateway(object):
-    def __init__(self, protocol, logger=None):
+    def __init__(self, host, product_id, device_name, device_secret,
+                    websocket=False, tls=True, logger=None):
         self.__logger = logger
-        self.__protocol = protocol
+        self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
+                                                websocket=websocket, tls=tls, logger=logger)
+        self.__protocol = self.__provider.protocol
         self.__codec = Codec()
 
         self.__gateway_session_client_id = None
@@ -63,7 +67,6 @@ class Gateway(object):
             self.session_status = 0
 
     def handle_gateway(self, topic, message):
-        print("-------handle_gateway message:%s" % message)
         self.__gateway_raply = True
         ptype = message["type"]
         payload = message["payload"]
