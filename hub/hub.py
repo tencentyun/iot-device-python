@@ -28,7 +28,8 @@ from hub.log.log import Log
 from hub.utils.codec import Codec
 from hub.utils.providers import TopicProvider
 from hub.utils.providers import DeviceInfoProvider
-from hub.protocol.protocol import AsyncConnClient
+# from hub.protocol.protocol import AsyncConnClient
+from hub.utils.providers import ConnClientProvider
 from hub.manager.manager import TaskManager
 from hub.services.gateway.gateway import Gateway
 from hub.services.rrpc.rrpc import Rrpc
@@ -42,9 +43,12 @@ class QcloudHub(object):
     """
     def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
         self.__tls = tls
+        self.__useWebsocket = useWebsocket
         self.__key_mode = True
         self.__userdata = userdata
+        self.__provider = None
         self.__protocol = None
+        self.__host = ""
         self.__paholog = logging.getLogger("Paho")
         self._logger = Log()
         self.__codec = Codec()
@@ -91,10 +95,22 @@ class QcloudHub(object):
 
         self.__protocol_init(domain, useWebsocket)
 
-        self.__rrpc = Rrpc(self.__protocol, self._logger)
-        self.__broadcast = Broadcast(self.__protocol, self._logger)
-        self.__shadow = Shadow(self.__protocol, self._logger)
-        self.__ota = Ota(self._topic.ota_report_topic_pub, self.__protocol, self._logger)
+        self.__rrpc = Rrpc(self.__host, self.__device_info.product_id, self.__device_info.device_name,
+                                self.__device_info.device_secret, websocket=self.__useWebsocket,
+                                tls=self.__tls, logger=self._logger)
+
+        self.__broadcast = Broadcast(self.__host, self.__device_info.product_id, self.__device_info.device_name,
+                                    self.__device_info.device_secret, websocket=self.__useWebsocket,
+                                    tls=self.__tls, logger=self._logger)
+
+        self.__shadow = Shadow(self.__host, self.__device_info.product_id, self.__device_info.device_name,
+                                    self.__device_info.device_secret, websocket=self.__useWebsocket,
+                                    tls=self.__tls, logger=self._logger)
+
+        self.__ota = Ota(self._topic.ota_report_topic_pub, self.__host, self.__device_info.product_id,
+                            self.__device_info.device_name,
+                            self.__device_info.device_secret, websocket=self.__useWebsocket,
+                            tls=self.__tls, logger=self._logger)
 
     class HubState(Enum):
         """ 连接状态 """
@@ -446,7 +462,6 @@ class QcloudHub(object):
         pass
 
     # 连接协议(mqtt/websocket)初始化
-    # def protocolInit(self, domain=None, useWebsocket=False):
     def __protocol_init(self, domain=None, useWebsocket=False):
         auth_mode = self.__device_info.auth_mode
         device_name = self.__device_info.device_name
@@ -457,18 +472,18 @@ class QcloudHub(object):
         key = self.__device_info.private_key_file
 
         if useWebsocket is False:
-            host = ""
             if domain is None or domain == "":
-                host = product_id + ".iotcloud.tencentdevices.com"
+                self.__host = product_id + ".iotcloud.tencentdevices.com"
             else:
-                host = product_id + domain
-            self.__protocol = AsyncConnClient(host, product_id, device_name, device_secret, logger=self._logger)
+                self.__host = product_id + domain
         else:
             if self.__tls:
-                host = "wss:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+                self.__host = "wss:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
             else:
-                host = "ws:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
-            self.__protocol = AsyncConnClient(host, product_id, device_name, device_secret, websocket=True, logger=self._logger)
+                self.__host = "ws:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+        self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
+                                                websocket=useWebsocket, tls=self.__tls, logger=self._logger)
+        self.__protocol = self.__provider.protocol
 
         if auth_mode == "CERT":
             self.__protocol.set_cert_file(ca, cert, key)
@@ -709,7 +724,10 @@ class QcloudHub(object):
             raise self.StateError("current state is not CONNECTED")
 
         # 将class AsyncConnClient实例传入gateway,方便其直接使用AsyncConnClient提供的能力
-        self.__gateway = Gateway(self.__protocol, self._logger)
+        # self.__gateway = Gateway(self.__protocol, self._logger)
+        self.__gateway = Gateway(self.__host, self.__device_info.product_id, self.__device_info.device_name,
+                                    self.__device_info.device_secret, websocket=self.__useWebsocket,
+                                    tls=self.__tls, logger=self._logger)
         json_data = self.__device_info.json_data
         gateway_topic_sub = self._topic.gateway_topic_sub
 

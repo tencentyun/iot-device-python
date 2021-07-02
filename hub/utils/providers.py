@@ -13,6 +13,17 @@
 
 import string
 import json
+import threading
+from hub.protocol.protocol import AsyncConnClient
+
+class SingletonType(type):
+    _instance_lock = threading.Lock()
+    def __call__(cls, *args, **kwargs):
+        if not hasattr(cls, "_instance"):
+            with SingletonType._instance_lock:
+                if not hasattr(cls, "_instance"):
+                    cls._instance = super(SingletonType,cls).__call__(*args, **kwargs)
+        return cls._instance
 
 class TopicProvider(object):
     def __init__(self, product_id, device_name):
@@ -227,3 +238,13 @@ class DeviceInfoProvider(object):
     @property
     def json_data(self):
         return self.__json_data
+
+class ConnClientProvider(metaclass=SingletonType):
+    """
+    使用单例模式构建,保证hub对象只有一份
+    """
+    def __init__(self, host, product_id, device_name, device_secret, websocket=False, tls=True, logger=None):
+        self.protocol = AsyncConnClient(host, product_id, device_name, device_secret, websocket, tls, logger)
+
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)

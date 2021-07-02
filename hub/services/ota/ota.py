@@ -20,10 +20,14 @@ import hashlib
 from enum import Enum
 from enum import IntEnum
 from hub.utils.codec import Codec
+from hub.utils.providers import ConnClientProvider
 
 class Ota(object):
-    def __init__(self, topic, protocol, logger=None):
-        self.__protocol = protocol
+    def __init__(self, topic, host, product_id, device_name, device_secret,
+                    websocket=False, tls=True, logger=None):
+        self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
+                                                websocket=websocket, tls=tls, logger=logger)
+        self.__protocol = self.__provider.protocol
         self.__logger = logger
         self.__topic_pub = topic
         self.__codec = Codec()

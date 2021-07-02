@@ -12,10 +12,14 @@
 # limitations under the License.
 
 import json
+from hub.utils.providers import ConnClientProvider
 
 class Broadcast(object):
-    def __init__(self, protocol, logger=None):
-        self.__protocol = protocol
+    def __init__(self, host, product_id, device_name, device_secret,
+                    websocket=False, tls=True, logger=None):
+        self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
+                                                websocket=websocket, tls=tls, logger=logger)
+        self.__protocol = self.__provider.protocol
         self.__logger = logger
 
     def __assert(self, param):
