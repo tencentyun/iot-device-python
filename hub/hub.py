@@ -72,6 +72,8 @@ class QcloudHub(object):
         """
         self.__subscribe_res = {}
 
+        self.__ota_map = {}
+
         self.__user_topics = {}
         self.__user_topics_subscribe_request = {}
         self.__user_topics_unsubscribe_request = {}
@@ -107,10 +109,7 @@ class QcloudHub(object):
                                     self.__device_info.device_secret, websocket=self.__useWebsocket,
                                     tls=self.__tls, logger=self._logger)
 
-        self.__ota = Ota(self._topic.ota_report_topic_pub, self.__host, self.__device_info.product_id,
-                            self.__device_info.device_name,
-                            self.__device_info.device_secret, websocket=self.__useWebsocket,
-                            tls=self.__tls, logger=self._logger)
+        # self.__ota = None
 
     class HubState(Enum):
         """ 连接状态 """
@@ -288,7 +287,20 @@ class QcloudHub(object):
                     self.__user_callback[topic](topic, qos, payload, self.__userdata)
 
             elif ptype == "update_firmware":
-                self.__ota.handle_ota(topic, payload)
+                pos = topic.rfind("/")
+                device_name = topic[pos + 1:len(topic)]
+
+                topic_split = topic[0:pos]
+                pos = topic_split.rfind("/")
+                product_id = topic_split[pos + 1:len(topic_split)]
+                client = product_id + device_name
+                if (client not in self.__ota_map.keys()
+                        or self.__ota_map[client] is None):
+                    self._logger.error("[ota] not found ota handle for client:%s" % (client))
+                    return None
+
+                ota = self.__ota_map[client]
+                ota.handle_ota(topic, payload)
 
         elif self._topic.rrpc_topic_sub_prefix in topic:
             self.__rrpc.handle_rrpc(topic, payload)
@@ -790,14 +802,17 @@ class QcloudHub(object):
     def shadowJsonConstructReport(self, *args):
         return self.__shadow.shadow_json_construct_report(self.__device_info.product_id, args)
 
-    def otaInit(self):
+    def otaInit(self, productId, deviceName):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
-        ota_topic_sub = self._topic.ota_update_topic_sub
-        rc, mid = self.__ota.ota_init(ota_topic_sub, 1)
+        ota = Ota(self.__host, self.__device_info.product_id,
+                            self.__device_info.device_name, self.__device_info.device_secret,
+                            websocket=self.__useWebsocket, tls=self.__tls, logger=self._logger)
+        topic_sub = self._topic.ota_update_topic_sub
+        rc, mid = ota.ota_init(productId, deviceName)
         if rc != 0:
-            self._logger.error("[ota] subscribe error:rc:%d,topic:%s" % (rc, ota_topic_sub))
+            self._logger.error("[ota] subscribe error:rc:%d,topic:%s" % (rc, topic_sub))
             return rc, mid
 
         """
@@ -815,58 +830,152 @@ class QcloudHub(object):
         if cnt >= 10:
             return -1, mid
 
-        self.__ota.ota_manager_init()
+        ota.ota_manager_init()
+
+        client = productId + deviceName
+        self.__ota_map[client] = ota
 
         return rc, mid
 
     # 是否应将ota句柄传入(支持多个下载进程?)
-    def otaIsFetching(self):
-        return self.__ota.ota_is_fetching()
+    def otaIsFetching(self, productId, deviceName):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return False
 
-    def otaIsFetchFinished(self):
-        return self.__ota.ota_is_fetch_finished()
+        ota = self.__ota_map[client]
+        return ota.ota_is_fetching()
 
-    def otaReportUpgradeSuccess(self, version):
-        rc, mid = self.__ota.ota_report_upgrade_success(version)
+    def otaIsFetchFinished(self, productId, deviceName):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return False
+
+        ota = self.__ota_map[client]
+        return ota.ota_is_fetch_finished()
+
+    def otaReportUpgradeSuccess(self, productId, deviceName, version):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1, -1
+
+        ota = self.__ota_map[client]
+        rc, mid = ota.ota_report_upgrade_success(version)
         if rc != 0:
             self._logger.error("ota report upgrade(success) fail")
         return rc, mid
 
-    def otaReportUpgradeFail(self, version):
-        rc, mid = self.__ota.ota_report_upgrade_fail(version)
+    def otaReportUpgradeFail(self, productId, deviceName, version):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1, -1
+
+        ota = self.__ota_map[client]
+        rc, mid = ota.ota_report_upgrade_fail(version)
         if rc != 0:
             self._logger.error("ota report upgrade(fail) fail")
         return rc, mid
 
-    def otaIoctlNumber(self, cmdType):
-        return self.__ota.ota_ioctl_number(cmdType)
+    def otaIoctlNumber(self, productId, deviceName, cmdType):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1, "no handle"
 
-    def otaIoctlString(self, cmdType, length):
-        return self.__ota.ota_ioctl_string(cmdType, length)
+        ota = self.__ota_map[client]
+        return ota.ota_ioctl_number(cmdType)
 
-    def otaResetMd5(self):
-        return self.__ota.ota_reset_md5()
+    def otaIoctlString(self, productId, deviceName, cmdType, length):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return "null", "no handle"
 
-    def otaMd5Update(self, buf):
-        return self.__ota.ota_md5_update(buf)
+        ota = self.__ota_map[client]
+        return ota.ota_ioctl_string(cmdType, length)
 
-    def __ota_http_deinit(self, http):
+    def otaResetMd5(self, productId, deviceName):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1
+
+        ota = self.__ota_map[client]
+        return ota.ota_reset_md5()
+
+    def otaMd5Update(self, productId, deviceName,buf):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1
+
+        ota = self.__ota_map[client]
+        return ota.ota_md5_update(buf)
+
+    def __ota_http_deinit(self, productId, deviceName, http):
         print("__ota_http_deinit do nothing")
 
-    def httpInit(self, host, url, offset, size, timeoutSec):
-        return self.__ota.http_init(host, url, offset, size, timeoutSec)
+    def httpInit(self, productId, deviceName, host, url, offset, size, timeoutSec):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1
 
-    def httpFetch(self, buf_len):
-        return self.__ota.http_fetch(buf_len)
+        ota = self.__ota_map[client]
+        return ota.http_init(host, url, offset, size, timeoutSec)
 
-    def otaReportVersion(self, version):
-        rc, mid = self.__ota.ota_report_version(version)
+    def httpFetch(self, productId, deviceName, buf_len):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return None, -1
+
+        ota = self.__ota_map[client]
+        return ota.http_fetch(buf_len)
+
+    def otaReportVersion(self, productId, deviceName, version):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1, -1
+
+        ota = self.__ota_map[client]
+        rc, mid = ota.ota_report_version(version)
         if rc != 0:
             self._logger.error("[ota] report version fail")
         return rc, mid
 
-    def otaDownloadStart(self, offset, size):
-        return self.__ota.ota_download_start(offset, size)
+    def otaDownloadStart(self, productId, deviceName, offset, size):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return -1
 
-    def otaFetchYield(self, buf_len):
-        return self.__ota.ota_fetch_yield(buf_len)
+        ota = self.__ota_map[client]
+        return ota.ota_download_start(offset, size)
+
+    def otaFetchYield(self, productId, deviceName, buf_len):
+        client = productId + deviceName
+        if (client not in self.__ota_map.keys()
+                or self.__ota_map[client] is None):
+            self._logger.error("[ota] not found ota handle for client:%s" % (client))
+            return None, -1
+
+        ota = self.__ota_map[client]
+        return ota.ota_fetch_yield(buf_len)

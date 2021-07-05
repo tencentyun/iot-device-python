@@ -20,17 +20,18 @@ import hashlib
 from enum import Enum
 from enum import IntEnum
 from hub.utils.codec import Codec
+from hub.utils.providers import TopicProvider
 from hub.utils.providers import ConnClientProvider
 
 class Ota(object):
-    def __init__(self, topic, host, product_id, device_name, device_secret,
+    def __init__(self, host, product_id, device_name, device_secret,
                     websocket=False, tls=True, logger=None):
         self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
                                                 websocket=websocket, tls=tls, logger=logger)
         self.__protocol = self.__provider.protocol
         self.__logger = logger
-        self.__topic_pub = topic
         self.__codec = Codec()
+        self.__topic = None
 
         self.__ota_manager = None
         self.__ota_version_len_min = 1
@@ -107,7 +108,8 @@ class Ota(object):
             raise ValueError('Invalid param.')
 
     def __ota_publish(self, message, qos):
-        rc, mid = self.__protocol.publish(self.__topic_pub, json.dumps(message), qos)
+        topic_pub = self.__topic.ota_report_topic_pub
+        rc, mid = self.__protocol.publish(topic_pub, json.dumps(message), qos)
         return rc, mid
 
     def __ota_info_get(self, payload):
@@ -255,7 +257,7 @@ class Ota(object):
     def ota_ioctl_string(self, cmd_type, length):
         if ((self.__ota_manager.state == self.OtaState.IOT_OTAS_INITED)
                 or (self.__ota_manager.state == self.OtaState.IOT_OTAS_UNINITED)):
-            return "nll", "state error"
+            return "null", "state error"
 
         if cmd_type == self.OtaCmdType.IOT_OTAG_VERSION:
             if len(self.__ota_manager.version) > length:
@@ -273,6 +275,7 @@ class Ota(object):
     def ota_reset_md5(self):
         self.__ota_manager.md5 = None
         self.__ota_manager.md5 = hashlib.md5()
+        return 0
 
     def ota_md5_update(self, buf):
         if buf is None:
@@ -292,11 +295,17 @@ class Ota(object):
         """
         self.__ota_info_get(payload)
 
-    def ota_init(self, topic, qos):
+    def ota_init(self, product_id, device_name):
+        """
+        ota资源初始化
+        """
+        self.__topic = TopicProvider(product_id, device_name)
+        topic_sub = self.__topic.ota_update_topic_sub
+
         self.__ota_manager = self.ota_manage()
         self.__ota_manager.state = self.OtaState.IOT_OTAS_UNINITED
 
-        return self.__protocol.subscribe(topic, qos)
+        return self.__protocol.subscribe(topic_sub, 1)
 
     def ota_manager_init(self):
         self.__ota_manager.state = self.OtaState.IOT_OTAS_INITED
@@ -309,7 +318,7 @@ class Ota(object):
     def ota_is_fetch_finished(self):
         return (self.__ota_manager.state == self.OtaState.IOT_OTAS_FETCHED)
 
-    def http_init(self, host, url, offset, size, timeoutSec):
+    def http_init(self, host, url, offset, size, timeout_sec):
         range_format = "bytes=%d-%d"
         srange = range_format % (offset, size)
 
@@ -331,7 +340,7 @@ class Ota(object):
                 self.http_manager.request = urllib.request.Request(url=url, headers=header)
                 self.http_manager.handle = urllib.request.urlopen(self.http_manager.request,
                                                                   context=context,
-                                                                  timeout=timeoutSec)
+                                                                  timeout=timeout_sec)
             except urllib.error.HTTPError as e:
                 self.__logger.error("https connect error:%d" % e.code)
                 self.http_manager.err_code = e.code
@@ -344,7 +353,7 @@ class Ota(object):
             try:
                 self.http_manager.request = urllib.request.Request(url=url, headers=header)
                 self.http_manager.handle = urllib.request.urlopen(self.http_manager.request,
-                                                                  timeout=timeoutSec)
+                                                                  timeout=timeout_sec)
             except Exception as e:
                 self.__logger.error("http connect error:%s" % str(e))
                 return 1
