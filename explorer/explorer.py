@@ -30,11 +30,8 @@ import time
 import paho.mqtt.client as mqtt
 from enum import Enum
 from enum import IntEnum
-# from paho.mqtt.client import MQTTMessage
 from Crypto.Cipher import AES
-# from hub.hub import QcloudHub
 from explorer.providers.providers import Providers
-# from explorer.services.gateway.gateway import Gateway
 from explorer.services.template.template import Template
 
 class QcloudExplorer(object):
@@ -47,9 +44,13 @@ class QcloudExplorer(object):
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
 
-        # self.__hub = QcloudHub(device_file, tls)
         self.__provider = Providers(device_file, tls)
         self.__hub = self.__provider.hub
+        """
+        向hub注册mqtt disconnect回调
+        explorer层清理相关资源
+        """
+        self.__hub.register_explorer_callback("$explorer/from/disconnect", self.__on_disconnect)
 
         """ 用户回调注册到hub层 """
         # self.__register_hub_event_callback()
@@ -58,33 +59,12 @@ class QcloudExplorer(object):
         self.__PahoLog = logging.getLogger("Paho")
         self.__PahoLog.setLevel(logging.DEBUG)
 
-        # self.__gateway = Gateway(device_file, tls, self.__logger)
-        # self.__template = Template(self.__hub, self.__logger)
-        
-        # self.__template = Template(device_file, tls, self.__logger)
         self.__template_map = {}
 
         self.__topic = self.__hub._topic
 
-        # set state initialized
-        self.__explorer_state = self.__hub.HubState.INITIALIZED
-
         # data template
         self.__is_subscribed_property_topic = False
-
-        # ota
-        # 保存__on_subscribe()返回的mid和qos对,用以判断订阅是否成功
-        self.__ota_subscribe_res = {}
-        self.__ota_manager = None
-        self.__ota_version_len_min = 1
-        self.__ota_version_len_max = 32
-        self.http_manager = None
-
-        # connect with async
-        self.__connect_async_req = False
-        self.__worker_loop_exit_req = False
-        self.__worker_loop_runing_state = False
-        self.__worker_loop_exit_req_lock = threading.Lock()
 
         # user mqtt callback
         self.__user_on_connect = None
@@ -93,10 +73,6 @@ class QcloudExplorer(object):
         self.__user_on_subscribe = None
         self.__user_on_unsubscribe = None
         self.__user_on_message = None
-
-        # ota
-        self.__user_on_ota_report = None
-
         pass
 
     class ReplyPara(object):
@@ -104,6 +80,15 @@ class QcloudExplorer(object):
             self.timeout_ms = 0
             self.code = -1
             self.status_msg = None
+
+    def __on_disconnect(self, client, userdata, rc):
+        """
+        清理数据模板资源
+        """
+        for template in self.__template_map.values():
+            if template is not None:
+                template.template_reset()
+        pass
 
     def __handle_subdev_topic(self, topic, qos, payload):
         """ 回调用户处理 """
@@ -152,10 +137,7 @@ class QcloudExplorer(object):
         return self.__hub.isMqttConnected()
 
     def getConnectStatus(self):
-        return self.__explorer_state
-
-    # def protocolInit(self, domain=None, useWebsocket=False):
-        # return self.__hub.protocolInit(domain, useWebsocket)
+        return self.__hub.getConnectState()
 
     # start thread to connect and loop
     def connect(self):
@@ -179,7 +161,7 @@ class QcloudExplorer(object):
 
     def registerUserCallback(self, topic, callback):
         """
-        用户注册回调接口
+        用户注册回调接口(非mqtt回调)
         """
         self.__user_callback[topic] = callback
 
