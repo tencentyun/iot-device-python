@@ -163,6 +163,14 @@ class Template(object):
             # __handle_reply回调到用户，由用户调用clearContrl()
             self.__handle_property(payload)
 
+    def template_reset(self):
+        self._template_token_num = 0
+        self.__template_events_list.clear()
+        self.__template_action_list.clear()
+        self.__template_property_list.clear()
+        self.__template_setup_state = False
+        self.__replyAck = -1
+
     def template_deinit(self):
         topic_list = []
         topic_list.append(self.__topic.template_property_topic_sub)

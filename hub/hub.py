@@ -83,7 +83,6 @@ class QcloudHub(object):
         self.__loop_worker = self.LoopWorker(self._logger)
         self.__event_worker = self.EventWorker(self._logger)
         self.__register_event_callback()
-        # self.__utils = Utils()
 
         """
         hub层注册到mqtt的回调
@@ -182,7 +181,10 @@ class QcloudHub(object):
                                                     self.__user_subscribe,
                                                     self.__user_unsubscribe)
 
-    # user callback
+    """
+    处理用户回调
+    基于explorer接入时会将用户回调赋值到本层用户回调函数
+    """
     def __user_connect(self, value):
         # client, user_data, session_flag, rc = value
         session_flag, rc = value
@@ -194,7 +196,6 @@ class QcloudHub(object):
         pass
 
     def __user_disconnect(self, value):
-        # 从explorer接入时,在此调用explorer注册进来的对应回调
         self.__user_on_disconnect(value, self.__userdata)
         pass
 
@@ -215,33 +216,28 @@ class QcloudHub(object):
         message = value
         topic = message.topic
         qos = message.qos
-        # mid = message.mid
         payload = json.loads(message.payload.decode('utf-8'))
         # print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
 
         if topic == self._topic.template_property_topic_sub:
-            # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_event_topic_sub:
-            # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_action_topic_sub:
-            # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_service_topic_sub:
-            # 回调到explorer层处理
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
             else:
@@ -363,19 +359,19 @@ class QcloudHub(object):
 
         self.__user_topics_subscribe_request.clear()
         self.__user_topics_unsubscribe_request.clear()
+        self.__user_topics.clear()
 
-        # todo:资源清理
-        # self.__template_prop_report_reply_mid.clear()
-        # self.__user_topics.clear()
-        # self.__gateway_session_online_reply.clear()
-        # self.__gateway_session_offline_reply.clear()
-        # self.__gateway_session_bind_reply.clear()
-        # self.__gateway_session_unbind_reply.clear()
-        # self.__on_gateway_subdev_prop_cb_dict.clear()
-        # self.__on_gateway_subdev_action_cb_dict.clear()
-        # self.__on_gateway_subdev_event_cb_dict.clear()
+        self.__gateway.gateway_reset()
 
-        # self.__user_thread.post_message(self.__user_cmd_on_disconnect, (client, user_data, rc))
+        """
+        将disconnect事件通知到explorer
+        """
+        ex_topic = "$explorer/from/disconnect"
+        if self.__user_callback[ex_topic] is not None:
+            self.__user_callback[ex_topic](client, self.__userdata, rc)
+        else:
+            self._logger.error("no callback for topic %s" % ex_topic)
+
         self.__event_worker._thread.post_message(self.__event_worker.EventPool.DISCONNECT, (rc))
         if self.__hub_state == self.HubState.DESTRUCTED:
             self.__event_worker._thread.stop()
@@ -408,25 +404,49 @@ class QcloudHub(object):
         while True:
             if self.__loop_worker._exit_req:
                 if self.__hub_state == self.HubState.DESTRUCTING:
-                    # self.__handler_task.stop()
+                    self.__loop_worker._thread.stop()
                     self.__hub_state = self.HubState.DESTRUCTED
                 break
             try:
                 self.__hub_state = self.HubState.CONNECTING
+                """
+                实际连接
+                """
                 self.__protocol.reconnect()
             except (socket.error, OSError) as e:
                 self._logger.error("mqtt reconnect error:" + str(e))
                 # 失败处理 待添加
                 if self.__hub_state == self.HubState.CONNECTING:
                     self.__hub_state = self.HubState.DISCONNECTED
-                    # self.__on__connect_safe(None, None, 0, 9)
+                    self.__protocol.reset_reconnect_wait()
+
                     if self.__hub_state == self.HubState.DESTRUCTING:
-                        # self.__handler_task.stop()
+                        self.__loop_worker._thread.stop()
                         self.__hub_state = self.HubState.DESTRUCTED
                         break
                     self.__protocol.reconnect_wait()
                 continue
+            """
+            调用循环调用mqtt loop读取消息
+            """
             self.__protocol.loop()
+            """
+            mqtt loop接口失败(异常导致的disconnect)
+            1.将disconnect事件通知到用户
+            2.清理sdk相关资源
+            """
+            if self.__hub_state == self.HubState.CONNECTED:
+                self.__on_disconnect(None, None, -1)
+            """
+            清理线程资源
+            """
+            if self.__loop_worker._exit_req:
+                if self.__hub_state == self.HubState.DESTRUCTING:
+                    self.__loop_worker._thread.stop()
+                    self.__hub_state = self.HubState.DESTRUCTED
+                break
+            self.__protocol.reconnect_wait()
+
         pass
 
     def registerMqttCallback(self, on_connect, on_disconnect,

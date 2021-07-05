@@ -29,7 +29,7 @@ class Gateway(object):
         self.__protocol = self.__provider.protocol
         self.__codec = Codec()
 
-        self.__gateway_session_client_id = None
+        # self.__gateway_session_client_id = None
         self.__gateway_session_online_reply = {}
         self.__gateway_session_offline_reply = {}
         self.__gateway_session_bind_reply = {}
@@ -38,13 +38,6 @@ class Gateway(object):
 
         # 网关子设备property topic订阅的子设备列表
         self.__gateway_subdev_bind_list = []
-        self.__gateway_subdev_action_topic_list = []
-        self.__gateway_subdev_event_topic_list = []
-
-        # 网关子设备property回调字典(["product_id":callback])
-        self.__on_gateway_subdev_prop_cb_dict = {}
-        self.__on_gateway_subdev_action_cb_dict = {}
-        self.__on_gateway_subdev_event_cb_dict = {}
 
         self.__gateway_session_online_lock = threading.Lock()
         self.__gateway_session_offline_lock = threading.Lock()
@@ -212,6 +205,16 @@ class Gateway(object):
         pass
 
         return payload
+
+    def gateway_reset(self):
+        self.__gateway_session_online_reply.clear()
+        self.__gateway_session_offline_reply.clear()
+        self.__gateway_session_bind_reply.clear()
+        self.__gateway_session_unbind_reply.clear()
+        self.__gateway_raply = False
+
+        self.__gateway_subdev_bind_list.clear()
+        self.gateway_subdev_config_list.clear()
 
     def gateway_init(self, topic, qos, device_info):
         # 解析网关子设备信息,并添加到list

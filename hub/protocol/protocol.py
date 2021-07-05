@@ -194,8 +194,6 @@ class AsyncConnClient(object):
                 self._ssl_init(self.__key_mode)
             except ssl.SSLError as e:
                 self.__logger.error("ssl init error:" + str(e))
-                # self.__connect_state = self.ConnectState.INITIALIZED
-                # connect again 待添加
                 return False
         else:
             mqtt_port = self.__mqtt_tcp_port
@@ -207,8 +205,6 @@ class AsyncConnClient(object):
             self.__mqtt_client.connect_async(host=self.__host, port=mqtt_port, keepalive=self.__mqtt_keep_alive)
         except Exception as e:
             self.__logger.error("mqtt connect with async error:" + str(e))
-            # self.__connect_state = self.ConnectState.INITIALIZED
-            # connect again 待添加
             return False
         return True
 
