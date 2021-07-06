@@ -13,6 +13,7 @@
 
 import json
 from hub.utils.providers import ConnClientProvider
+from hub.utils.providers import TopicProvider
 
 class Broadcast(object):
     def __init__(self, host, product_id, device_name, device_secret,
@@ -20,13 +21,12 @@ class Broadcast(object):
         self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
                                                 websocket=websocket, tls=tls, logger=logger)
         self.__protocol = self.__provider.protocol
+        self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
 
     def __assert(self, param):
         if param is None or len(param) == 0:
             raise ValueError('Invalid param.')
 
-    def broadcast_init(self, topic, qos):
-        self.__assert(topic)
-
-        return self.__protocol.subscribe(topic, qos)
+    def broadcast_init(self):
+        return self.__protocol.subscribe(self.__topic.broadcast_topic_sub, 0)

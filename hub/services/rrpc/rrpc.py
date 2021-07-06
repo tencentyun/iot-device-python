@@ -13,6 +13,7 @@
 
 import json
 from hub.utils.providers import ConnClientProvider
+from hub.utils.providers import TopicProvider
 
 class Rrpc(object):
     def __init__(self, host, product_id, device_name, device_secret,
@@ -20,6 +21,7 @@ class Rrpc(object):
         self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
                                                 websocket=websocket, tls=tls, logger=logger)
         self.__protocol = self.__provider.protocol
+        self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
         self.__process_id = None
 
@@ -39,14 +41,13 @@ class Rrpc(object):
     def handle_rrpc(self, topic, payload):
         return self.__rrpc_get_process_id(topic)
 
-    def rrpc_init(self, topic, qos):
-        self.__assert(topic)
+    def rrpc_init(self):
+        topic = self.__topic.rrpc_topic_sub_prefix + "+"
+        return self.__protocol.subscribe(topic, 0)
 
-        return self.__protocol.subscribe(topic, qos)
-
-    def rrpc_reply(self, topic_prefix, qos, reply):
+    def rrpc_reply(self, reply):
         self.__assert(self.__process_id)
         self.__assert(reply)
 
-        topic = topic_prefix + self.__process_id
-        return self.__protocol.publish(topic, json.dumps(reply), qos)
+        topic = self.__topic.rrpc_topic_pub_prefix + self.__process_id
+        return self.__protocol.publish(topic, json.dumps(reply), 0)
