@@ -71,7 +71,7 @@ class Shadow(object):
     def shadow_update(self, shadow_docs):
         self.__assert(shadow_docs)
 
-        return self.__protocol.publish(self.__topic.shadow_topic_pub, shadow_docs, 0)
+        return self.__protocol.publish(self.__topic.shadow_topic_pub,json.dumps(shadow_docs), 0)
 
     def shadow_json_construct_report(self, product_id, *args):
         self.__assert(product_id)
