@@ -73,6 +73,9 @@ class QcloudHub(object):
         self.__subscribe_res = {}
 
         self.__ota_map = {}
+        self.__rrpc_map = {}
+        self.__shadow_map = {}
+        self.__broadcast_map = {}
 
         self.__user_topics = {}
         self.__user_topics_subscribe_request = {}
@@ -95,20 +98,6 @@ class QcloudHub(object):
         self.__user_on_message = None
 
         self.__protocol_init(domain, useWebsocket)
-
-        self.__rrpc = Rrpc(self.__host, self.__device_info.product_id, self.__device_info.device_name,
-                                self.__device_info.device_secret, websocket=self.__useWebsocket,
-                                tls=self.__tls, logger=self._logger)
-
-        self.__broadcast = Broadcast(self.__host, self.__device_info.product_id, self.__device_info.device_name,
-                                    self.__device_info.device_secret, websocket=self.__useWebsocket,
-                                    tls=self.__tls, logger=self._logger)
-
-        self.__shadow = Shadow(self.__host, self.__device_info.product_id, self.__device_info.device_name,
-                                    self.__device_info.device_secret, websocket=self.__useWebsocket,
-                                    tls=self.__tls, logger=self._logger)
-
-        # self.__ota = None
 
     class HubState(Enum):
         """ 连接状态 """
@@ -299,7 +288,25 @@ class QcloudHub(object):
                 ota.handle_ota(topic, payload)
 
         elif self._topic.rrpc_topic_sub_prefix in topic:
-            self.__rrpc.handle_rrpc(topic, payload)
+            # topic:$rrpc/rxd/${productID}/${deviceName}/${processID}
+            pos = topic.rfind("/")
+            topic_split1 = topic[0:pos]
+
+            pos = topic_split1.rfind("/")
+            device_name = topic_split1[pos + 1:len(topic_split1)]
+
+            topic_split = topic_split1[0:pos]
+            pos = topic_split.rfind("/")
+            product_id = topic_split[pos + 1:len(topic_split)]
+
+            client = product_id + device_name
+            if (client not in self.__rrpc_map.keys()
+                    or self.__rrpc_map[client] is None):
+                self._logger.error("[template] not found template handle for client:%s" % (client))
+                return None
+
+            rrpc = self.__rrpc_map[client]
+            rrpc.handle_rrpc(topic, payload)
             if self.__user_callback[topic] is not None:
                 self.__user_callback[topic](topic, qos, payload, self.__userdata)
             else:
@@ -755,8 +762,6 @@ class QcloudHub(object):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
-        # 将class AsyncConnClient实例传入gateway,方便其直接使用AsyncConnClient提供的能力
-        # self.__gateway = Gateway(self.__protocol, self._logger)
         self.__gateway = Gateway(self.__host, self.__device_info.product_id, self.__device_info.device_name,
                                     self.__device_info.device_secret, websocket=self.__useWebsocket,
                                     tls=self.__tls, logger=self._logger)
@@ -765,62 +770,112 @@ class QcloudHub(object):
 
         return self.__gateway.gateway_init(gateway_topic_sub, 0, json_data)
 
-    def rrpcInit(self):
+    def rrpcInit(self, productId, deviceName):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
-        rrpc_topic_sub = self._topic.rrpc_topic_sub_prefix + "+"
-        rc, mid = self.__rrpc.rrpc_init(rrpc_topic_sub, 0)
+        client = productId + deviceName
+        rrpc = Rrpc(self.__host, productId, deviceName,
+                        "", websocket=self.__useWebsocket,
+                        tls=self.__tls, logger=self._logger)
+
+        rc, mid = rrpc.rrpc_init()
         if rc != 0:
-            self._logger.error("[rrpc] subscribe error:rc:%d,topic:%s" % (rc, rrpc_topic_sub))
+            self._logger.error("[rrpc] subscribe error:rc:%d" % (rc))
+        else:
+            self.__rrpc_map[client] = rrpc
         return rc, mid
 
-    def rrpcReply(self, reply, length):
-        topic_prefix = self._topic.rrpc_topic_pub_prefix
-        rc, mid = self.__rrpc.rrpc_reply(topic_prefix, 0, reply)
+    def rrpcReply(self, productId, deviceName, reply, length):
+        client = productId + deviceName
+        if (client not in self.__rrpc_map.keys()
+                or self.__rrpc_map[client] is None):
+            self._logger.error("[template] not found template handle for client:%s" % (client))
+            return None
+
+        rrpc = self.__rrpc_map[client]
+        rc, mid = rrpc.rrpc_reply(reply)
         if rc != 0:
-            self._logger.error("[rrpc] publish error:rc:%d,topic:%s" % (rc, topic_prefix))
+            self._logger.error("[rrpc] publish error:rc:%d" % (rc))
         return rc, mid
     
-    def broadcastInit(self):
+    def broadcastInit(self, productId, deviceName):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
-        broadcast_topic_sub = self._topic.broadcast_topic_sub
-        rc, mid = self.__broadcast.broadcast_init(broadcast_topic_sub, 0)
+        client = productId + deviceName
+        broadcast = Broadcast(self.__host, productId, deviceName,
+                                "", websocket=self.__useWebsocket,
+                                tls=self.__tls, logger=self._logger)
+
+        rc, mid = broadcast.broadcast_init()
         if rc != 0:
-            self._logger.error("[broadcast] publish error:rc:%d,topic:%s" % (rc, broadcast_topic_sub))
+            self._logger.error("[broadcast] publish error:rc:%d" % (rc))
+        else:
+            self.__broadcast_map[client] = broadcast
         return rc, mid
 
-    def shadowInit(self):
+    def shadowInit(self, productId, deviceName):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
+        
+        client = productId + deviceName
+        shadow = Shadow(self.__host, productId, deviceName,
+                            "", websocket=self.__useWebsocket,
+                            tls=self.__tls, logger=self._logger)
 
-        shadow_topic_sub = self._topic.shadow_topic_sub
-        rc, mid = self.__shadow.shadow_init(shadow_topic_sub, 0)
+        rc, mid = shadow.shadow_init()
         if rc != 0:
-            self._logger.error("[shadow] publish error:rc:%d,topic:%s" % (rc, shadow_topic_sub))
+            self._logger.error("[shadow] publish error:rc:%d" % (rc))
+        else:
+            self.__shadow_map[client] = shadow
         return rc, mid
 
-    def getShadow(self):
-        topic_pub = self._topic.shadow_topic_pub
-        rc, mid = self.__shadow.get_shadow(topic_pub, 0, self.__device_info.product_id)
+    def getShadow(self, productId, deviceName):
+        client = productId + deviceName
+        if (client not in self.__rrpc_map.keys()
+                or self.__rrpc_map[client] is None):
+            self._logger.error("[template] not found template handle for client:%s" % (client))
+            return None
+
+        shadow = self.__shadow_map[client]
+        rc, mid = shadow.get_shadow(productId)
         if rc != 0:
-            self._logger.error("[shadow] publish error:rc:%d,topic:%s" % (rc, topic_pub))
+            self._logger.error("[shadow] publish error:rc:%d" % (rc))
         return rc, mid
 
-    def shadowJsonConstructDesireNull(self):
-        return self.__shadow.shadow_json_construct_desire_null(self.__device_info.product_id)
+    def shadowJsonConstructDesireNull(self, productId, deviceName):
+        client = productId + deviceName
+        if (client not in self.__rrpc_map.keys()
+                or self.__rrpc_map[client] is None):
+            self._logger.error("[template] not found template handle for client:%s" % (client))
+            return None
 
-    def shadowUpdate(self, shadow_docs, length):
-        topic = self._topic.shadow_topic_pub
-        rc, mid = self.__shadow.shadow_update(topic, 0, shadow_docs)
+        shadow = self.__shadow_map[client]
+        return shadow.shadow_json_construct_desire_null(productId)
+
+    def shadowUpdate(self, productId, deviceName, shadow_docs, length):
+        client = productId + deviceName
+        if (client not in self.__rrpc_map.keys()
+                or self.__rrpc_map[client] is None):
+            self._logger.error("[template] not found template handle for client:%s" % (client))
+            return None
+
+        shadow = self.__shadow_map[client]
+        rc, mid = shadow.shadow_update(shadow_docs)
         if rc != 0:
-            self._logger.error("topic_publish error:rc:%d,topic:%s" % (rc, topic))
+            self._logger.error("topic_publish error:rc:%d" % (rc))
         return rc, mid
 
-    def shadowJsonConstructReport(self, *args):
-        return self.__shadow.shadow_json_construct_report(self.__device_info.product_id, args)
+    def shadowJsonConstructReport(self, productId, deviceName, *args):
+        client = productId + deviceName
+        if (client not in self.__rrpc_map.keys()
+                or self.__rrpc_map[client] is None):
+            self._logger.error("[template] not found template handle for client:%s" % (client))
+            return None
+
+        shadow = self.__shadow_map[client]
+        return shadow.shadow_json_construct_report(productId, args)
 
     def otaInit(self, productId, deviceName):
         if self.__hub_state is not self.HubState.CONNECTED:

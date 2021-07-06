@@ -13,6 +13,7 @@
 
 import json
 from hub.utils.providers import ConnClientProvider
+from hub.utils.providers import TopicProvider
 
 class Shadow(object):
     def __init__(self, host, product_id, device_name, device_secret,
@@ -20,6 +21,7 @@ class Shadow(object):
         self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
                                                 websocket=websocket, tls=tls, logger=logger)
         self.__protocol = self.__provider.protocol
+        self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
         self.__shadow_token_num = 0
 
@@ -27,13 +29,10 @@ class Shadow(object):
         if param is None or len(param) == 0:
             raise ValueError('Invalid param.')
 
-    def shadow_init(self, topic, qos):
-        self.__assert(topic)
+    def shadow_init(self):
+        return self.__protocol.subscribe(self.__topic.shadow_topic_sub, 0)
 
-        return self.__protocol.subscribe(topic, qos)
-
-    def get_shadow(self, topic, qos, product_id):
-        self.__assert(topic)
+    def get_shadow(self, product_id):
         self.__assert(product_id)
 
         client_token = product_id + "-" + str(self.__shadow_token_num)
@@ -43,9 +42,10 @@ class Shadow(object):
             "type": "get",
             "clientToken": client_token
         }
-        return self.__protocol.publish(topic, json.dumps(message), qos)
+        return self.__protocol.publish(self.__topic.shadow_topic_pub, json.dumps(message), 0)
 
     def shadow_json_construct_desire_null(self, product_id):
+        self.__assert(product_id)
         client_token = product_id + "-" + str(self.__shadow_token_num)
         self.__shadow_token_num += 1
         json_out = {
@@ -57,11 +57,10 @@ class Shadow(object):
         }
         return json_out
 
-    def shadow_update(self, topic, qos, shadow_docs):
-        self.__assert(topic)
+    def shadow_update(self, shadow_docs):
         self.__assert(shadow_docs)
 
-        return self.__protocol.publish(topic, shadow_docs, qos)
+        return self.__protocol.publish(self.__topic.shadow_topic_pub, shadow_docs, 0)
 
     def shadow_json_construct_report(self, product_id, *args):
         self.__assert(product_id)
