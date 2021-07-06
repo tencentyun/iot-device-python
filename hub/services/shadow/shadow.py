@@ -24,12 +24,23 @@ class Shadow(object):
         self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
         self.__shadow_token_num = 0
+        self.__user_callback = {}
 
     def __assert(self, param):
         if param is None or len(param) == 0:
             raise ValueError('Invalid param.')
 
-    def shadow_init(self):
+    def handle_shadow(self, topic, qos, payload, userdata):
+        """
+        回调用户
+        """
+        if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, userdata)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
+
+    def shadow_init(self, shadow_cb):
+        self.__user_callback[self.__topic.shadow_topic_sub] = shadow_cb
         return self.__protocol.subscribe(self.__topic.shadow_topic_sub, 0)
 
     def get_shadow(self, product_id):

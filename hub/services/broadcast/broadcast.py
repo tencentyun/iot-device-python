@@ -23,10 +23,18 @@ class Broadcast(object):
         self.__protocol = self.__provider.protocol
         self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
+        self.__user_callback = {}
 
     def __assert(self, param):
         if param is None or len(param) == 0:
             raise ValueError('Invalid param.')
 
-    def broadcast_init(self):
+    def handle_broadcast(self, topic, qos, payload, userdata):
+        if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, userdata)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
+
+    def broadcast_init(self, broadcast_cb):
+        self.__user_callback[self.__topic.broadcast_topic_sub] = broadcast_cb
         return self.__protocol.subscribe(self.__topic.broadcast_topic_sub, 0)

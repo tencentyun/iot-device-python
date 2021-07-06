@@ -208,6 +208,14 @@ class QcloudHub(object):
         payload = json.loads(message.payload.decode('utf-8'))
         # print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
 
+        pos = topic.rfind("/")
+        device_name = topic[pos + 1:len(topic)]
+
+        topic_split = topic[0:pos]
+        pos = topic_split.rfind("/")
+        product_id = topic_split[pos + 1:len(topic_split)]
+        client = product_id + device_name
+
         if topic == self._topic.template_property_topic_sub:
             if self.__explorer_callback[topic] is not None:
                 self.__explorer_callback[topic](topic, qos, payload)
@@ -260,32 +268,29 @@ class QcloudHub(object):
             self.__gateway.handle_gateway(topic, payload)
 
         elif topic == self._topic.ota_update_topic_sub:
-            ptype = payload["type"]
-            if ptype == "report_version_rsp":
-                """
-                1.用户基于hub层接入,直接回调用户的注册函数
-                2.用户基于explorer层接入,回调explorer的注册函数,由exporer调用用户的注册函数
-                """
-                if self.__user_callback[topic] is not None:
-                    self.__user_callback[topic](topic, qos, payload, self.__userdata)
-                elif self.__user_callback[topic] is not None:
-                    self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            if (client not in self.__ota_map.keys()
+                    or self.__ota_map[client] is None):
+                self._logger.error("[template] not found template handle for client:%s" % (client))
+                return None
 
-            elif ptype == "update_firmware":
-                pos = topic.rfind("/")
-                device_name = topic[pos + 1:len(topic)]
+            ota = self.__ota_map[client]
+            ota.handle_ota(topic, qos, payload, self.__userdata)
 
-                topic_split = topic[0:pos]
-                pos = topic_split.rfind("/")
-                product_id = topic_split[pos + 1:len(topic_split)]
-                client = product_id + device_name
-                if (client not in self.__ota_map.keys()
-                        or self.__ota_map[client] is None):
-                    self._logger.error("[ota] not found ota handle for client:%s" % (client))
-                    return None
+            # ptype = payload["type"]
+            # if ptype == "report_version_rsp":
+            #     """
+            #     1.用户基于hub层接入,直接回调用户的注册函数
+            #     2.用户基于explorer层接入,回调explorer的注册函数,由exporer调用用户的注册函数
+            #     """
+            #     if self.__user_callback[topic] is not None:
+            #         self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            #     elif self.__explorer_callback[topic] is not None:
+            #         self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
 
-                ota = self.__ota_map[client]
-                ota.handle_ota(topic, payload)
+            # elif ptype == "update_firmware":
+
+            #     ota = self.__ota_map[client]
+            #     ota.handle_ota(topic, payload)
 
         elif self._topic.rrpc_topic_sub_prefix in topic:
             # topic:$rrpc/rxd/${productID}/${deviceName}/${processID}
@@ -306,23 +311,25 @@ class QcloudHub(object):
                 return None
 
             rrpc = self.__rrpc_map[client]
-            rrpc.handle_rrpc(topic, payload)
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
+            rrpc.handle_rrpc(topic, qos, payload, self.__userdata)
 
         elif self._topic.shadow_topic_sub in topic:
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
+            if (client not in self.__shadow_map.keys()
+                    or self.__shadow_map[client] is None):
+                self._logger.error("[template] not found template handle for client:%s" % (client))
+                return None
+
+            shadow = self.__shadow_map[client]
+            shadow.handle_shadow(topic, qos, payload, self.__userdata)
 
         elif self._topic.broadcast_topic_sub in topic:
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
+            if (client not in self.__broadcast_map.keys()
+                    or self.__broadcast_map[client] is None):
+                self._logger.error("[template] not found template handle for client:%s" % (client))
+                return None
+
+            broadcast = self.__broadcast_map[client]
+            broadcast.handle_broadcast(topic, qos, payload, self.__userdata)
 
         else:
             if self.__explorer_callback[topic] is not None:
@@ -770,7 +777,7 @@ class QcloudHub(object):
 
         return self.__gateway.gateway_init(gateway_topic_sub, 0, json_data)
 
-    def rrpcInit(self, productId, deviceName):
+    def rrpcInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -779,7 +786,7 @@ class QcloudHub(object):
                         "", websocket=self.__useWebsocket,
                         tls=self.__tls, logger=self._logger)
 
-        rc, mid = rrpc.rrpc_init()
+        rc, mid = rrpc.rrpc_init(callback)
         if rc != 0:
             self._logger.error("[rrpc] subscribe error:rc:%d" % (rc))
         else:
@@ -799,7 +806,7 @@ class QcloudHub(object):
             self._logger.error("[rrpc] publish error:rc:%d" % (rc))
         return rc, mid
     
-    def broadcastInit(self, productId, deviceName):
+    def broadcastInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -808,14 +815,14 @@ class QcloudHub(object):
                                 "", websocket=self.__useWebsocket,
                                 tls=self.__tls, logger=self._logger)
 
-        rc, mid = broadcast.broadcast_init()
+        rc, mid = broadcast.broadcast_init(callback)
         if rc != 0:
             self._logger.error("[broadcast] publish error:rc:%d" % (rc))
         else:
             self.__broadcast_map[client] = broadcast
         return rc, mid
 
-    def shadowInit(self, productId, deviceName):
+    def shadowInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         
@@ -824,7 +831,7 @@ class QcloudHub(object):
                             "", websocket=self.__useWebsocket,
                             tls=self.__tls, logger=self._logger)
 
-        rc, mid = shadow.shadow_init()
+        rc, mid = shadow.shadow_init(callback)
         if rc != 0:
             self._logger.error("[shadow] publish error:rc:%d" % (rc))
         else:
@@ -877,7 +884,7 @@ class QcloudHub(object):
         shadow = self.__shadow_map[client]
         return shadow.shadow_json_construct_report(productId, args)
 
-    def otaInit(self, productId, deviceName):
+    def otaInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -885,7 +892,7 @@ class QcloudHub(object):
                             self.__device_info.device_name, self.__device_info.device_secret,
                             websocket=self.__useWebsocket, tls=self.__tls, logger=self._logger)
         topic_sub = self._topic.ota_update_topic_sub
-        rc, mid = ota.ota_init(productId, deviceName)
+        rc, mid = ota.ota_init(productId, deviceName, callback)
         if rc != 0:
             self._logger.error("[ota] subscribe error:rc:%d,topic:%s" % (rc, topic_sub))
             return rc, mid
