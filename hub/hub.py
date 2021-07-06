@@ -118,6 +118,13 @@ class QcloudHub(object):
         def __init__(self, err):
             Exception.__init__(self, err)
 
+    class device_property(object):
+        def __init__(self):
+            self.key = ""
+            self.data = ""
+            self.data_buff_len = 0
+            self.type = ""
+
     # 管理连接相关资源
     class LoopWorker(object):
         """ mqtt连接管理维护 """
@@ -560,9 +567,6 @@ class QcloudHub(object):
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_keepalive_interval(interval)
-
-    def getProtocolHandle(self):
-        return self.__protocol
     
     def getProductID(self):
         return self.__device_info.product_id
@@ -825,7 +829,7 @@ class QcloudHub(object):
     def shadowInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
-        
+
         client = productId + deviceName
         shadow = Shadow(self.__host, productId, deviceName,
                             "", websocket=self.__useWebsocket,
@@ -840,9 +844,9 @@ class QcloudHub(object):
 
     def getShadow(self, productId, deviceName):
         client = productId + deviceName
-        if (client not in self.__rrpc_map.keys()
-                or self.__rrpc_map[client] is None):
-            self._logger.error("[template] not found template handle for client:%s" % (client))
+        if (client not in self.__shadow_map.keys()
+                or self.__shadow_map[client] is None):
+            self._logger.error("[shadow] not found shadow handle for client:%s" % (client))
             return None
 
         shadow = self.__shadow_map[client]
@@ -851,11 +855,11 @@ class QcloudHub(object):
             self._logger.error("[shadow] publish error:rc:%d" % (rc))
         return rc, mid
 
-    def shadowJsonConstructDesireNull(self, productId, deviceName):
+    def shadowJsonConstructDesireAllNull(self, productId, deviceName):
         client = productId + deviceName
-        if (client not in self.__rrpc_map.keys()
-                or self.__rrpc_map[client] is None):
-            self._logger.error("[template] not found template handle for client:%s" % (client))
+        if (client not in self.__shadow_map.keys()
+                or self.__shadow_map[client] is None):
+            self._logger.error("[shadow] not found shadow handle for client:%s" % (client))
             return None
 
         shadow = self.__shadow_map[client]
@@ -863,9 +867,9 @@ class QcloudHub(object):
 
     def shadowUpdate(self, productId, deviceName, shadow_docs, length):
         client = productId + deviceName
-        if (client not in self.__rrpc_map.keys()
-                or self.__rrpc_map[client] is None):
-            self._logger.error("[template] not found template handle for client:%s" % (client))
+        if (client not in self.__shadow_map.keys()
+                or self.__shadow_map[client] is None):
+            self._logger.error("[shadow] not found shadow handle for client:%s" % (client))
             return None
 
         shadow = self.__shadow_map[client]
@@ -876,13 +880,13 @@ class QcloudHub(object):
 
     def shadowJsonConstructReport(self, productId, deviceName, *args):
         client = productId + deviceName
-        if (client not in self.__rrpc_map.keys()
-                or self.__rrpc_map[client] is None):
-            self._logger.error("[template] not found template handle for client:%s" % (client))
+        if (client not in self.__shadow_map.keys()
+                or self.__shadow_map[client] is None):
+            self._logger.error("[shadow] not found shadow handle for client:%s" % (client))
             return None
 
         shadow = self.__shadow_map[client]
-        return shadow.shadow_json_construct_report(productId, args)
+        return shadow.shadow_json_construct_report(productId, *args)
 
     def otaInit(self, productId, deviceName, callback):
         if self.__hub_state is not self.HubState.CONNECTED:
