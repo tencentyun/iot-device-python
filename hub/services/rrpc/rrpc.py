@@ -24,6 +24,7 @@ class Rrpc(object):
         self.__topic = TopicProvider(product_id, device_name)
         self.__logger = logger
         self.__process_id = None
+        self.__user_callback = {}
 
     def __assert(self, param):
         if param is None or len(param) == 0:
@@ -38,11 +39,18 @@ class Rrpc(object):
             self.__logger.error("cannot found process id from topic:%s" % topic)
             return -1
 
-    def handle_rrpc(self, topic, payload):
-        return self.__rrpc_get_process_id(topic)
+    def handle_rrpc(self, topic, qos, payload, userdata):
+        self.__rrpc_get_process_id(topic)
 
-    def rrpc_init(self):
+        if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, userdata)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
+
+    def rrpc_init(self, rrpc_cb):
         topic = self.__topic.rrpc_topic_sub_prefix + "+"
+        self.__user_callback[topic] = rrpc_cb
+
         return self.__protocol.subscribe(topic, 0)
 
     def rrpc_reply(self, reply):

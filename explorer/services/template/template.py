@@ -29,6 +29,11 @@ class Template(object):
         self.__template_property_list = []
         self.__template_setup_state = False
 
+        """
+        保存用户注册的回调
+        """
+        self.__user_callback = {}
+
         # data template reply
         self.__replyAck = -1
 
@@ -158,10 +163,18 @@ class Template(object):
     def get_property_list(self):
         return self.__template_property_list
 
-    def handle_template(self, topic, payload):
+    def handle_template(self, topic, qos, payload):
         if topic == self.__topic.template_property_topic_sub:
             # __handle_reply回调到用户，由用户调用clearContrl()
             self.__handle_property(payload)
+
+        """
+        回调用户数据模板topic对应回调
+        """
+        if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload)
+        else:
+            self.__logger.error("no callback for topic %s" % topic)
 
     def template_reset(self):
         self._template_token_num = 0
@@ -178,20 +191,29 @@ class Template(object):
         topic_list.append(self.__topic.template_action_topic_sub)
         return self.__hub.unsubscribe(topic_list)
 
-    def template_init(self, callback):
+    def template_init(self, callback, peopery_cb, action_cb, event_cb, service_cb):
+        property_topic = self.__topic.template_property_topic_sub
+        action_topic = self.__topic.template_action_topic_sub
+        event_topic = self.__topic.template_event_topic_sub
+        service_topic = self.__topic.template_service_topic_sub
+        self.__user_callback[property_topic] = peopery_cb
+        self.__user_callback[action_topic] = action_cb
+        self.__user_callback[event_topic] = event_cb
+        self.__user_callback[service_topic] = event_cb
+
         topic_list = []
-        topic_list.append(self.__topic.template_property_topic_sub)
-        topic_list.append(self.__topic.template_action_topic_sub)
-        topic_list.append(self.__topic.template_event_topic_sub)
-        topic_list.append(self.__topic.template_service_topic_sub)
+        topic_list.append(property_topic)
+        topic_list.append(action_topic)
+        topic_list.append(event_topic)
+        topic_list.append(service_topic)
 
         self.__hub.register_explorer_callback(topic_list, callback)
 
         topic_list.clear()
-        topic_list.append((self.__topic.template_property_topic_sub, 0))
-        topic_list.append((self.__topic.template_action_topic_sub, 0))
-        topic_list.append((self.__topic.template_event_topic_sub, 0))
-        topic_list.append((self.__topic.template_service_topic_sub, 1))
+        topic_list.append((property_topic, 0))
+        topic_list.append((action_topic, 0))
+        topic_list.append((event_topic, 0))
+        topic_list.append((service_topic, 1))
         return self.__hub.subscribe(topic_list, 0)
 
     def template_report(self, message):

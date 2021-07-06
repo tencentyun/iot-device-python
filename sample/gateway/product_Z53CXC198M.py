@@ -10,19 +10,17 @@ g_te = None
 g_property_params = None
 g_control_msg_arrived = False
 
-topic_property = None
-topic_action = None
-topic_event = None
-topic_list = []
+def on_subdev_cb(topic, qos, payload, userdata):
+    pass
 
-def _template_prop(params, userdata):
-    print("product_002:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
+def on_template_property(topic, qos, payload, userdata):
+    print("product_002:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     global g_te
     te = g_te
     # save changed propertys
     global g_property_params
-    g_property_params = params
+    g_property_params = payload
 
     global g_control_msg_arrived
     g_control_msg_arrived = True
@@ -39,13 +37,16 @@ def _template_prop(params, userdata):
 
     pass
 
+def on_template_service(topic, qos, payload, userdata):
+    print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    pass
 
-def _template_event_post(payload, userdata):
+def on_template_event(topic, qos, payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
 
-def _template_action(payload, userdata):
+def on_template_action(topic, qos, payload, userdata):
     print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     global g_te
@@ -64,21 +65,6 @@ def _template_action(payload, userdata):
     te.templateActionReply(product_id, device_name, clientToken, res, reply_param)
     pass
 
-def on_template_changed(topic, qos, payload, userdata):
-    print("product_002:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
-    global topic_property
-    global topic_action
-    global topic_event
-
-    if topic == topic_property:
-        _template_prop(payload, userdata)
-    elif topic == topic_action:
-        _template_action(payload, userdata)
-    elif topic == topic_event:
-        _template_event_post(payload, userdata)
-    else:
-        print("unkonw topic %s" % topic)
-
 def product_init(pid, subdev_list, te):
 
     print("product_002:=========%s==========" % pid)
@@ -91,29 +77,21 @@ def product_init(pid, subdev_list, te):
     product_id = pid
     device_name = subdev
 
-    global topic_property
-    global topic_action
-    global topic_event
-    topic_property = "$thing/down/property/%s/%s" % (product_id, device_name)
-    topic_action = "$thing/down/action/%s/%s" % (product_id, device_name)
-    topic_event = "$thing/down/event/%s/%s" % (product_id, device_name)
-    te.registerUserCallback(topic_property, on_template_changed)
-    te.registerUserCallback(topic_action, on_template_changed)
-    te.registerUserCallback(topic_event, on_template_changed)
-
     """
     订阅网关子设备topic
+    eg:${productId}/${deviceName}/data
     """
+    topic_list = []
     topic_format = "%s/%s/%s"
     topic_data = topic_format % (product_id, device_name, "data")
     topic_list.append((topic_data, 0))
     """ 注册topic对应回调 """
-    te.registerUserCallback(topic_data, on_template_changed)
+    te.registerUserCallback(topic_data, on_subdev_cb)
 
     topic_control = topic_format % (product_id, device_name, "control")
     topic_list.append((topic_control, 0))
     """ 注册topic对应回调 """
-    te.registerUserCallback(topic_control, on_template_changed)
+    te.registerUserCallback(topic_control, on_subdev_cb)
 
     """ 订阅子设备topic,在此必须传入元组列表[(topic1,qos2),(topic2,qos2)] """
     rc, mid = te.gatewaySubdevSubscribe(topic_list)
@@ -122,8 +100,11 @@ def product_init(pid, subdev_list, te):
     else:
         print("gateway subdev subscribe fail")
 
-
-    te.templateInit(product_id, device_name)
+    """
+    注册数据模板topic回调,用户不再关注具体topic
+    """
+    te.templateInit(product_id, device_name, on_template_property,
+                        on_template_action, on_template_event, on_template_service)
     te.templateSetup(product_id, device_name, "sample/gateway/Z53CXC198M_config.json")
     # sysinfo report
     sys_info = {

@@ -37,6 +37,7 @@ class Ota(object):
         self.__ota_version_len_min = 1
         self.__ota_version_len_max = 32
         self.http_manager = None
+        self.__user_callback = {}
 
     class OtaState(Enum):
         IOT_OTAS_UNINITED = 0
@@ -289,18 +290,27 @@ class Ota(object):
         self.__ota_manager.md5.update(buf)
         return 0
 
-    def handle_ota(self, topic, payload):
-        """
-        只处理type为update_firmware的情况
-        """
-        self.__ota_info_get(payload)
+    def handle_ota(self, topic, qos, payload, userdata):
+        ptype = payload["type"]
+        if ptype == "report_version_rsp":
+            """
+            回调用户
+            """
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, userdata)
+            else:
+                self.__logger.error("no callback for topic %s" % topic)
 
-    def ota_init(self, product_id, device_name):
+        elif ptype == "update_firmware":
+            self.__ota_info_get(payload)
+
+    def ota_init(self, product_id, device_name, ota_cb):
         """
         ota资源初始化
         """
         self.__topic = TopicProvider(product_id, device_name)
         topic_sub = self.__topic.ota_update_topic_sub
+        self.__user_callback[topic_sub] = ota_cb
 
         self.__ota_manager = self.ota_manage()
         self.__ota_manager.state = self.OtaState.IOT_OTAS_UNINITED

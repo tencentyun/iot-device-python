@@ -112,14 +112,14 @@ class QcloudExplorer(object):
             return None
 
         template = self.__template_map[client]
-        template.handle_template(topic, payload)
+        template.handle_template(topic, qos, payload)
 
-        """ 回调用户处理 """
-        if (topic in self.__user_callback.keys()
-                and self.__user_callback[topic] is not None):
-            self.__user_callback[topic](topic, qos, payload, self.__userdata)
-        else:
-            self.__logger.error("no callback for topic %s" % topic)
+        # """ 回调用户处理 """
+        # if (topic in self.__user_callback.keys()
+        #         and self.__user_callback[topic] is not None):
+        #     self.__user_callback[topic](topic, qos, payload, self.__userdata)
+        # else:
+        #     self.__logger.error("no callback for topic %s" % topic)
 
     def enableLogger(self, level):
         return self.__hub.enableLogger(level)
@@ -335,7 +335,8 @@ class QcloudExplorer(object):
 
         return rc, mid
 
-    def templateInit(self, productId, deviceName):
+    def templateInit(self, productId, deviceName,
+                        propertyCb, actionCb, eventCb, serviceCb):
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -345,8 +346,12 @@ class QcloudExplorer(object):
         client = productId + deviceName
         template = Template(self.__device_file, self.__tls, productId, deviceName, self.__logger)
 
-        # rc, mid = self.__template.template_init(self.__topic.template_property_topic_sub,
-        rc, mid = template.template_init(self.__handle_template)
+        """
+        注册用户数据模板topic(property/action/event)对应回调
+        注册后用户不用再关注相关topic
+        """
+        rc, mid = template.template_init(self.__handle_template,
+                                            propertyCb, actionCb, eventCb, serviceCb)
         if rc != 0:
             self.__logger.error("[template] subscribe error:rc:%d" % (rc))
             return rc, mid
@@ -432,44 +437,44 @@ class QcloudExplorer(object):
         return self.__hub.gatewayInit()
 
     # ota
-    def otaInit(self):
-        return self.__hub.otaInit()
+    def otaInit(self, productId, deviceName, callback):
+        return self.__hub.otaInit(callback)
 
-    def otaIsFetching(self):
+    def otaIsFetching(self, productId, deviceName):
         return self.__hub.otaIsFetching()
 
-    def otaIsFetchFinished(self):
+    def otaIsFetchFinished(self, productId, deviceName):
         return self.__hub.otaIsFetchFinished()
 
-    def otaReportUpgradeSuccess(self, version):
+    def otaReportUpgradeSuccess(self, productId, deviceName, version):
         return self.__hub.otaReportUpgradeSuccess(version)
 
-    def otaReportUpgradeFail(self, version):
+    def otaReportUpgradeFail(self, productId, deviceName, version):
         return self.__hub.otaReportUpgradeFail(version)
 
-    def otaIoctlNumber(self, cmdType):
+    def otaIoctlNumber(self, productId, deviceName, cmdType):
         return self.__hub.otaIoctlNumber(cmdType)
 
-    def otaIoctlString(self, cmdType, length):
+    def otaIoctlString(self, productId, deviceName, cmdType, length):
         return self.__hub.otaIoctlString(cmdType, length)
 
-    def otaResetMd5(self):
+    def otaResetMd5(self, productId, deviceName):
         return self.__hub.otaResetMd5()
 
-    def otaMd5Update(self, buf):
+    def otaMd5Update(self, productId, deviceName, buf):
         return self.__hub.otaMd5Update(buf)
 
-    def httpInit(self, host, url, offset, size, timeoutSec):
+    def httpInit(self, productId, deviceName, host, url, offset, size, timeoutSec):
         return self.__hub.httpInit(host, url, offset, size, timeoutSec)
 
-    def httpFetch(self, buf_len):
+    def httpFetch(self, productId, deviceName, buf_len):
         return self.__hub.httpFetch(buf_len)
 
-    def otaReportVersion(self, version):
+    def otaReportVersion(self, productId, deviceName, version):
         return self.__hub.otaReportVersion(version)
 
-    def otaDownloadStart(self, offset, size):
+    def otaDownloadStart(self, productId, deviceName, offset, size):
         return self.__hub.otaDownloadStart(offset, size)
 
-    def otaFetchYield(self, buf_len):
+    def otaFetchYield(self, productId, deviceName, buf_len):
         return self.__hub.otaFetchYield(buf_len)
