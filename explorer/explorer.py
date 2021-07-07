@@ -152,12 +152,9 @@ class QcloudExplorer(object):
         """
         注册用户层mqtt回调到hub层
         """
-        self.__hub.user_on_connect = on_connect
-        self.__hub.user_on_disconnect = on_disconnect
-        self.__hub.user_on_message = on_message
-        self.__hub.user_on_publish = on_publish
-        self.__hub.user_on_subscribe = on_subscribe
-        self.__hub.user_on_unsubscribe = on_unsubscribe
+        self.__hub.registerMqttCallback(on_connect, on_disconnect,
+                                        on_message, on_publish,
+                                        on_subscribe, on_unsubscribe)
 
     def registerUserCallback(self, topic, callback):
         """
