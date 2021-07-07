@@ -1,16 +1,10 @@
 import sys
-# from explorer import explorer
-from hub import hub
 import logging
 import time
-
-g_connected = False
+from hub.hub import QcloudHub
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
-    global g_connected
-    g_connected = True
-
     pass
 
 
@@ -43,20 +37,14 @@ def example_mqtt():
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = hub.QcloudHub(device_file="sample/device_info.json", userdata="",tls=True)
-    
+    te = QcloudHub(device_file="sample/device_info.json", userdata="",tls=True)
 
     print("\033[1;36m mqtt test start...\033[0m")
 
-    te.user_on_connect = on_connect
-    te.user_on_disconnect = on_disconnect
-    te.user_on_message = on_message
-    te.user_on_publish = on_publish
-    te.user_on_subscribe = on_subscribe
-    te.user_on_unsubscribe = on_unsubscribe
+    te.registerMqttCallback(on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe)
 
-
-    # te.protocolInit(useWebsocket=False)
     te.enableLogger(logging.DEBUG)
     te.connect()
 
@@ -74,47 +62,4 @@ def example_mqtt():
             count += 1
 
     print("\033[1;36m mqtt test success...\033[0m")
-    while True:
-        try:
-            msg = input()
-        except KeyboardInterrupt:
-            sys.exit()
-        else:
-            if msg == "1":
-                te.disconnect()
-            elif msg == "2":
-                te.getShadow()
-            else:
-                sys.exit()
-                
-    '''
-    count = 0
-    while True:
-        if te.isMqttConnected():
-            break
-        else:
-            if count >= 3:
-                # sys.exit()
-                return True
-            time.sleep(1)
-            count += 1
-
-
-    te.shadowInit()
-    te.broadcastInit()
-
-    while True:
-        try:
-            msg = input()
-        except KeyboardInterrupt:
-            sys.exit()
-        else:
-            if msg == "1":
-                te.disconnect()
-            elif msg == "2":
-                te.getShadow()
-            else:
-                sys.exit()
-    '''
-if __name__ == '__main__':
-	example_mqtt()
+    return True
