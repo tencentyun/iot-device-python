@@ -283,22 +283,6 @@ class QcloudHub(object):
             ota = self.__ota_map[client]
             ota.handle_ota(topic, qos, payload, self.__userdata)
 
-            # ptype = payload["type"]
-            # if ptype == "report_version_rsp":
-            #     """
-            #     1.用户基于hub层接入,直接回调用户的注册函数
-            #     2.用户基于explorer层接入,回调explorer的注册函数,由exporer调用用户的注册函数
-            #     """
-            #     if self.__user_callback[topic] is not None:
-            #         self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            #     elif self.__explorer_callback[topic] is not None:
-            #         self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
-
-            # elif ptype == "update_firmware":
-
-            #     ota = self.__ota_map[client]
-            #     ota.handle_ota(topic, payload)
-
         elif self._topic.rrpc_topic_sub_prefix in topic:
             # topic:$rrpc/rxd/${productID}/${deviceName}/${processID}
             pos = topic.rfind("/")

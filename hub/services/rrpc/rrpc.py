@@ -42,14 +42,17 @@ class Rrpc(object):
     def handle_rrpc(self, topic, qos, payload, userdata):
         self.__rrpc_get_process_id(topic)
 
-        if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, userdata)
+        pos = topic.rfind("/")
+        topic_split = topic[0:pos]
+        if self.__user_callback[topic_split] is not None:
+                self.__user_callback[topic_split](topic_split, qos, payload, userdata)
         else:
-            self.__logger.error("no callback for topic %s" % topic)
+            self.__logger.error("no callback for topic_split %s" % topic_split)
 
     def rrpc_init(self, rrpc_cb):
-        topic = self.__topic.rrpc_topic_sub_prefix + "+"
-        self.__user_callback[topic] = rrpc_cb
+        topic = self.__topic.rrpc_topic_sub_prefix + "/+"
+        self.__user_callback[self.__topic.rrpc_topic_sub_prefix] = rrpc_cb
+        
 
         return self.__protocol.subscribe(topic, 0)
 
@@ -57,5 +60,5 @@ class Rrpc(object):
         self.__assert(self.__process_id)
         self.__assert(reply)
 
-        topic = self.__topic.rrpc_topic_pub_prefix + self.__process_id
+        topic = self.__topic.rrpc_topic_pub_prefix + "/" + self.__process_id
         return self.__protocol.publish(topic, json.dumps(reply), 0)

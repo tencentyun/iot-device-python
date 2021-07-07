@@ -64,8 +64,8 @@ class TopicProvider(object):
         self.__ota_update_topic_sub = "$ota/update/%s/%s" % (product_id, device_name)
 
         # rrpc topic
-        self.__rrpc_topic_pub_prefix = "$rrpc/txd/%s/%s/" % (product_id, device_name)
-        self.__rrpc_topic_sub_prefix = "$rrpc/rxd/%s/%s/" % (product_id, device_name)
+        self.__rrpc_topic_pub_prefix = "$rrpc/txd/%s/%s" % (product_id, device_name)
+        self.__rrpc_topic_sub_prefix = "$rrpc/rxd/%s/%s" % (product_id, device_name)
 
         # shadow
         self.__shadow_topic_pub = "$shadow/operation/%s/%s" % (product_id, device_name)
