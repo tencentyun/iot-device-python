@@ -1,7 +1,7 @@
 import sys
 import logging
-from explorer import explorer
-sys.path.append('../../')
+from hub.hub import QcloudHub
+# sys.path.append('../../')
 
 
 # log setting
@@ -11,7 +11,7 @@ def example_dynreg():
 
     print("\033[1;36m dynreg test start...\033[0m")
 
-    dyn_explorer = explorer.QcloudExplorer('sample/device_info.json')
+    dyn_explorer = QcloudHub('sample/device_info.json')
     dyn_explorer.enableLogger(logging.DEBUG)
     ret, msg = dyn_explorer.dynregDevice()
 
@@ -25,5 +25,4 @@ def example_dynreg():
         # return False
         # 区分单元测试和sample
         return True
-if __name__ == '__main__':
-    example_dynreg()
+
