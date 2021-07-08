@@ -77,7 +77,7 @@ class QcloudHub(object):
         self.__shadow_map = {}
         self.__broadcast_map = {}
 
-        self.__user_topics = {}
+        self.__user_topics = []
         self.__user_topics_subscribe_request = {}
         self.__user_topics_unsubscribe_request = {}
         self.__user_topics_request_lock = threading.Lock()
@@ -471,6 +471,7 @@ class QcloudHub(object):
         """
         用户注册回调接口
         """
+        self.__user_topics.append(topic)
         self.__user_callback[topic] = callback
 
     def enableLogger(self, level):
@@ -743,12 +744,12 @@ class QcloudHub(object):
         gateway_topic_pub = self._topic.gateway_topic_pub
         return self.__gateway.gateway_subdev_unbind(gateway_topic_pub, 0, sub_productId, sub_devName)
 
-    def gatewaySubdevGetBindList(self, product_id, device_name, bind_list):
+    def gatewaySubdevGetBindList(self, product_id, device_name):
         self.__assert(product_id)
         self.__assert(device_name)
 
         gateway_topic_pub = self._topic.gateway_topic_pub
-        return self.__gateway.gateway_get_subdev_bind_list(gateway_topic_pub, 0, product_id, device_name, bind_list)
+        return self.__gateway.gateway_get_subdev_bind_list(gateway_topic_pub, 0, product_id, device_name)
     
     def gatewaySubdevSubscribe(self, topic):
         return self.__gateway.gateway_subdev_subscribe(topic)
