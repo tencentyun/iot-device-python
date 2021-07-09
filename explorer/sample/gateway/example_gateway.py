@@ -2,13 +2,12 @@ import sys
 import time
 import logging
 from threading import Thread
-# explorer网关测试
 from explorer import explorer
-# hub网关测试
-# from hub.hub import QcloudHub
 
-from gateway import product_ZPHBLEB4J5 as product_ZPHBLEB4J5
-from gateway import product_Z53CXC198M as product_Z53CXC198M
+# from gateway import product_1 as product_1
+# from gateway import product_2 as product_2
+import product_1
+import product_2
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -19,11 +18,11 @@ g_task_1 = None
 g_task_2 = None
 
 # 网关下所有产品名称列表
-g_product_list = ["ZPHBLEB4J5", "Z53CXC198M"]
+g_product_list = ["Z53CXC198M", "ZPHBLEB4J5"]
 
 # 产品下所有设备列表
-g_Z53CXC198M_subdev_list = []
-g_ZPHBLEB4J5_subdev_list = []
+g_product1_subdev_list = []
+g_product2_subdev_list = []
 
 
 def on_connect(flags, rc, userdata):
@@ -60,7 +59,7 @@ def on_unsubscribe(mid, userdata):
 def task_1(product_id, subdev_list=[]):
 
     global te
-    product_ZPHBLEB4J5.product_init(product_id, subdev_list, te)
+    product_1.product_init(product_id, subdev_list, te)
 
     global g_task_1_runing
     g_task_1_runing = True
@@ -69,7 +68,7 @@ def task_1(product_id, subdev_list=[]):
 def task_2(product_id, subdev_list=[]):
 
     global te
-    product_Z53CXC198M.product_init(product_id, subdev_list, te)
+    product_2.product_init(product_id, subdev_list, te)
 
     global g_task_2_runing
     g_task_2_runing = True
@@ -83,7 +82,7 @@ def example_gateway():
     logging.basicConfig(format=__log_format)
 
     global te
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json")
+    te = explorer.QcloudExplorer(device_file="sample/device_info-wg.json")
     te.enableLogger(logging.WARNING)
 
     print("\033[1;36m gateway test start...\033[0m")
@@ -119,20 +118,20 @@ def example_gateway():
         else:
             if msg == "1":
                 for subdev in subdev_list:
-                    if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is not True:
-                        rc, mid = te.gatewaySubdevOnline(subdev.sub_productId, subdev.sub_devName)
+                    if te.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is not True:
+                        rc, mid = te.gatewaySubdevOnline(subdev.product_id, subdev.device_name)
                         if rc == 0:
-                            te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "online")
+                            te.updateSubdevStatus(subdev.product_id, subdev.device_name, "online")
                             print("online success")
                         else:
                             print("online fail")
 
             elif msg == "2":
                 for subdev in subdev_list:
-                    if te.isSubdevStatusOnline(subdev.sub_productId, subdev.sub_devName) is True:
-                        rc, mid = te.gatewaySubdevOffline(subdev.sub_productId, subdev.sub_devName)
+                    if te.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is True:
+                        rc, mid = te.gatewaySubdevOffline(subdev.product_id, subdev.device_name)
                         if rc == 0:
-                            te.updateSubdevStatus(subdev.sub_productId, subdev.sub_devName, "offline")
+                            te.updateSubdevStatus(subdev.product_id, subdev.device_name, "offline")
                             print("offline success")
                         else:
                             print("offline fail")
@@ -155,25 +154,25 @@ def example_gateway():
                 if not g_task_1_runing:
                     product_id = g_product_list[0]
                     for subdev in subdev_list:
-                        if subdev.sub_productId == product_id:
-                            g_ZPHBLEB4J5_subdev_list.append(subdev.sub_devName)
+                        if subdev.product_id == product_id:
+                            g_product1_subdev_list.append(subdev.device_name)
                         else:
                             continue
 
                     # global g_task_1
-                    g_task_1 = Thread(target=task_1, args=(product_id, g_ZPHBLEB4J5_subdev_list,))
+                    g_task_1 = Thread(target=task_1, args=(product_id, g_product1_subdev_list,))
                     g_task_1.start()
 
                 if not g_task_2_runing:
                     product_id = g_product_list[1]
                     for subdev in subdev_list:
-                        if subdev.sub_productId == product_id:
-                            g_Z53CXC198M_subdev_list.append(subdev.sub_devName)
+                        if subdev.product_id == product_id:
+                            g_product2_subdev_list.append(subdev.device_name)
                         else:
                             continue
 
                     # global g_task_2
-                    g_task_2 = Thread(target=task_2, args=(product_id, g_Z53CXC198M_subdev_list,))
+                    g_task_2 = Thread(target=task_2, args=(product_id, g_product2_subdev_list,))
                     g_task_2.start()
 
             elif msg == "6":
