@@ -97,7 +97,7 @@ class QcloudExplorer(object):
         else:
             self.__logger.error("no callback for topic %s" % topic)
 
-    def __handle_template(self, topic, qos, payload):
+    def __handle_template(self, topic, qos, payload, userdate):
         pos = topic.rfind("/")
         device_name = topic[pos + 1:len(topic)]
 
@@ -112,7 +112,7 @@ class QcloudExplorer(object):
             return None
 
         template = self.__template_map[client]
-        template.handle_template(topic, qos, payload)
+        template.handle_template(topic, qos, payload, userdate)
 
         # """ 回调用户处理 """
         # if (topic in self.__user_callback.keys()

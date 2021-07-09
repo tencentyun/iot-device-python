@@ -225,25 +225,25 @@ class QcloudHub(object):
 
         if topic == self._topic.template_property_topic_sub:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload)
+                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_event_topic_sub:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload)
+                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_action_topic_sub:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload)
+                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
         elif topic == self._topic.template_service_topic_sub:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload)
+                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
             else:
                 self._logger.error("no callback for topic %s" % topic)
 
@@ -324,7 +324,7 @@ class QcloudHub(object):
 
         else:
             if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload)
+                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
             else:
                 self._logger.error("unknow topic:%s" % topic)
         pass
