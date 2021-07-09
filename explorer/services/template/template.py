@@ -163,7 +163,7 @@ class Template(object):
     def get_property_list(self):
         return self.__template_property_list
 
-    def handle_template(self, topic, qos, payload):
+    def handle_template(self, topic, qos, payload, userdata):
         if topic == self.__topic.template_property_topic_sub:
             # __handle_reply回调到用户，由用户调用clearContrl()
             self.__handle_property(payload)
@@ -172,7 +172,7 @@ class Template(object):
         回调用户数据模板topic对应回调
         """
         if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload)
+                self.__user_callback[topic](topic, qos, payload, userdata)
         else:
             self.__logger.error("no callback for topic %s" % topic)
 

@@ -229,7 +229,6 @@ class Gateway(object):
             p_subdev.product_id = subdev_list[index]['sub_productId']
             p_subdev.device_name = subdev_list[index]['sub_devName']
             p_subdev.session_status = self.SessionState.SUBDEV_SEESION_STATUS_INIT
-            print("add sebdev to list:%s" % p_subdev.device_name)
             self.gateway_subdev_config_list.append(p_subdev)
             index += 1
         pass
