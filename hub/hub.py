@@ -215,6 +215,8 @@ class QcloudHub(object):
         payload = json.loads(message.payload.decode('utf-8'))
         # print(">>>>>>> from qcloud:%s, topic:%s" % (payload, topic))
 
+        topic_prefix = topic[0:topic.find("/")]
+
         pos = topic.rfind("/")
         device_name = topic[pos + 1:len(topic)]
 
@@ -223,47 +225,23 @@ class QcloudHub(object):
         product_id = topic_split[pos + 1:len(topic_split)]
         client = product_id + device_name
 
-        if topic == self._topic.template_property_topic_sub:
-            if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
+        if topic_prefix == "$thing" or topic_prefix == "$template":
+            if topic == self._topic.template_raw_topic_sub:
+                # 调用explorer向hub注册的回调处理
+                self._logger.info("Reserved: template raw topic")
+
+            elif topic == self._topic.template_topic_sub:
+                if self.__user_callback[topic] is not None:
+                    self.__user_callback[topic](topic, qos, payload, self.__userdata)
+                else:
+                    self._logger.error("no callback for topic %s" % topic)
             else:
-                self._logger.error("no callback for topic %s" % topic)
+                if self.__explorer_callback[topic] is not None:
+                    self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
+                else:
+                    self._logger.error("no callback for topic %s" % topic)
 
-        elif topic == self._topic.template_event_topic_sub:
-            if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
-
-        elif topic == self._topic.template_action_topic_sub:
-            if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
-
-        elif topic == self._topic.template_service_topic_sub:
-            if self.__explorer_callback[topic] is not None:
-                self.__explorer_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
-
-        elif topic == self._topic.template_raw_topic_sub:
-            # 调用explorer向hub注册的回调处理
-            self._logger.info("Reserved: template raw topic")
-
-        elif topic in self.__user_topics:
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
-
-        elif topic == self._topic.template_topic_sub:
-            if self.__user_callback[topic] is not None:
-                self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            else:
-                self._logger.error("no callback for topic %s" % topic)
-
-        elif topic == self._topic.sys_topic_sub:
+        elif topic_prefix == "$sys":
             # 获取时间暂作为内部服务，有message回调通知用户
             self.__user_on_message(topic, qos, payload, self.__userdata)
             # if self.__user_callback[topic] is not None:
@@ -271,10 +249,10 @@ class QcloudHub(object):
             # else:
             #     self._logger.error("no callback for topic %s" % topic)
 
-        elif topic == self._topic.gateway_topic_sub:
+        elif topic_prefix == "$gateway":
             self.__gateway.handle_gateway(topic, payload)
 
-        elif topic == self._topic.ota_update_topic_sub:
+        elif topic_prefix == "$ota":
             if (client not in self.__ota_map.keys()
                     or self.__ota_map[client] is None):
                 self._logger.error("[template] not found template handle for client:%s" % (client))
@@ -283,7 +261,7 @@ class QcloudHub(object):
             ota = self.__ota_map[client]
             ota.handle_ota(topic, qos, payload, self.__userdata)
 
-        elif self._topic.rrpc_topic_sub_prefix in topic:
+        elif topic_prefix == "$rrpc":
             # topic:$rrpc/rxd/${productID}/${deviceName}/${processID}
             pos = topic.rfind("/")
             topic_split1 = topic[0:pos]
@@ -303,8 +281,8 @@ class QcloudHub(object):
 
             rrpc = self.__rrpc_map[client]
             rrpc.handle_rrpc(topic, qos, payload, self.__userdata)
-
-        elif self._topic.shadow_topic_sub in topic:
+        
+        elif topic_prefix == "$shadow":
             if (client not in self.__shadow_map.keys()
                     or self.__shadow_map[client] is None):
                 self._logger.error("[template] not found template handle for client:%s" % (client))
@@ -312,8 +290,8 @@ class QcloudHub(object):
 
             shadow = self.__shadow_map[client]
             shadow.handle_shadow(topic, qos, payload, self.__userdata)
-
-        elif self._topic.broadcast_topic_sub in topic:
+        
+        elif topic_prefix == "$broadcast":
             if (client not in self.__broadcast_map.keys()
                     or self.__broadcast_map[client] is None):
                 self._logger.error("[template] not found template handle for client:%s" % (client))
@@ -321,6 +299,12 @@ class QcloudHub(object):
 
             broadcast = self.__broadcast_map[client]
             broadcast.handle_broadcast(topic, qos, payload, self.__userdata)
+
+        elif topic in self.__user_topics:
+            if self.__user_callback[topic] is not None:
+                self.__user_callback[topic](topic, qos, payload, self.__userdata)
+            else:
+                self._logger.error("no callback for topic %s" % topic)
 
         else:
             if self.__explorer_callback[topic] is not None:
