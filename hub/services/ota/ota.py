@@ -237,11 +237,11 @@ class Ota(object):
                 or (self.__ota_manager.state == self.OtaState.IOT_OTAS_UNINITED)):
             return -1, "state error"
 
-        if cmd_type == self.OtaCmdType.IOT_OTAG_FETCHED_SIZE:
+        if cmd_type.value == self.OtaCmdType.IOT_OTAG_FETCHED_SIZE.value:
             return self.__ota_manager.size_fetched, "success"
-        elif cmd_type == self.OtaCmdType.IOT_OTAG_FILE_SIZE:
+        elif cmd_type.value == self.OtaCmdType.IOT_OTAG_FILE_SIZE.value:
             return self.__ota_manager.file_size, "success"
-        elif cmd_type == self.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE:
+        elif cmd_type.value == self.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE.value:
             if self.__ota_manager.state is not self.OtaState.IOT_OTAS_FETCHED:
                 return -1, "state error"
             md5sum = self.__ota_manager.md5.hexdigest()
@@ -260,12 +260,12 @@ class Ota(object):
                 or (self.__ota_manager.state == self.OtaState.IOT_OTAS_UNINITED)):
             return "null", "state error"
 
-        if cmd_type == self.OtaCmdType.IOT_OTAG_VERSION:
+        if cmd_type.value == self.OtaCmdType.IOT_OTAG_VERSION.value:
             if len(self.__ota_manager.version) > length:
                 return "null", "version length error"
             else:
                 return self.__ota_manager.version, "success"
-        elif cmd_type == self.OtaCmdType.IOT_OTAG_MD5SUM:
+        elif cmd_type.value == self.OtaCmdType.IOT_OTAG_MD5SUM.value:
             if len(self.__ota_manager.md5sum) > length:
                 return "null", "md5sum length error"
             else:
