@@ -1,9 +1,12 @@
 import sys
 import time
 import logging
-from threading import Thread
+import threading
 from hub.hub import QcloudHub
+from subdev_ota import SubdevOta
+sys.path.append('.')
 
+subdev_map = {}
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -19,11 +22,13 @@ def on_message(topic, payload, qos, userdata):
     print("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
     pass
 
-
 def on_publish(mid, userdata):
     print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
+    global subdev_map
+    for subdev_ota in subdev_map.values():
+        if subdev_ota is not None:
+            subdev_ota.update_reply_mid(mid)
     pass
-
 
 def on_subscribe(mid, granted_qos, userdata):
     print("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
@@ -37,6 +42,19 @@ def on_unsubscribe(mid, userdata):
 def on_subdev_cb(topic, qos, payload, userdata):
     print("%s:topic:%s,payload:%s" % (sys._getframe().f_code.co_name, topic, payload))
     pass
+
+def subdev_ota_thread(subdev_list=[]):
+    for subdev in subdev_list:
+        try:
+            global te
+            subdev_ota = SubdevOta(subdev.product_id, subdev.device_name, te)
+            client = subdev.product_id + subdev.device_name
+            global subdev_map
+            subdev_map[client] = subdev_ota
+            thread = threading.Thread(target=subdev_ota.subdev_ota_start, args=())
+            thread.start()
+        except:
+            print("Error: unable to start thread")
 
 def subscribe_subdev_topic(product_id, device_name, topic_suffix):
     """
@@ -101,7 +119,6 @@ def example_gateway():
     te.gatewayInit()
 
     subdev_list = te.gatewaySubdevGetConfigList()
-
     """
     while True:
         try:
@@ -155,6 +172,9 @@ def example_gateway():
                     print("subdev id:%s, name:%s" % (subdev.product_id, subdev.device_name))
 
             elif msg == "6":
+                # 子设备固件升级
+                subdev_ota_thread(subdev_list)
+            elif msg == "7":
                 te.disconnect()
 
             else:
@@ -162,5 +182,3 @@ def example_gateway():
     """
     print("\033[1;36m gateway test success...\033[0m")
     return True
-# if __name__ == '__main__':
-# 	example_gateway()
