@@ -3,20 +3,14 @@ import time
 import logging
 import json
 import os
-# from explorer import explorer
-from hub.hub import QcloudHub
-
-__log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-logging.basicConfig(format=__log_format)
-
-# te = explorer.QcloudExplorer(device_file="sample/device_info.json")
-te = QcloudHub(device_file="sample/device_info.json")
-te.enableLogger(logging.DEBUG)
+from enum import Enum
+from explorer.explorer import QcloudExplorer
 
 g_report_res = False
 g_packet_id = 0
 g_pub_ack = False
-
+product_id = None
+device_name = None
 
 class OtaContextData(object):
     def __init__(self):
@@ -28,6 +22,12 @@ class OtaContextData(object):
         self.local_version = None
         self.download_size = 0
 
+class OtaCmdType(Enum):
+    IOT_OTAG_FETCHED_SIZE = 0
+    IOT_OTAG_FILE_SIZE = 1
+    IOT_OTAG_MD5SUM = 2
+    IOT_OTAG_VERSION = 3
+    IOT_OTAG_CHECK_FIRMWARE = 4
 
 def on_connect(flags, rc, userdata):
     print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -45,14 +45,11 @@ def on_message(topic, payload, qos, userdata):
 
 
 def on_publish(mid, userdata):
-    # print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
-
     global g_packet_id
     if g_packet_id == mid:
         global g_pub_ack
         g_pub_ack = True
-        print("pub ack......")
-
+        print("publish ack id %d" % g_packet_id)
     pass
 
 
@@ -66,13 +63,12 @@ def on_unsubscribe(mid, userdata):
     pass
 
 
-def on_ota_report(payload, userdata):
+def on_ota_report(topic, qos, payload, userdata):
     print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     code = payload["result_code"]
     if code == 0:
         global g_report_res
         g_report_res = True
-
     pass
 
 
@@ -109,8 +105,10 @@ def _cal_exist_fw_md5(ota_cxt):
         print("file name is none")
         return -1
 
+    global product_id
+    global device_name
     total_read = 0
-    te.otaResetMd5()
+    te.otaResetMd5(product_id, device_name)
     size = ota_cxt.download_size
     with open(ota_cxt.file_path, "rb") as f:
         while size > 0:
@@ -118,7 +116,7 @@ def _cal_exist_fw_md5(ota_cxt):
             buf = f.read(rlen)
             if buf == "":
                 break
-            te.otaMd5Update(buf)
+            te.otaMd5Update(product_id, device_name, buf)
             size -= rlen
             total_read += rlen
         pass
@@ -166,18 +164,6 @@ def _save_fw_data_to_file(ota_cxt, buf, buf_len):
             print('write size error')
             f.close()
             return -1
-        """
-        wr_buf = buf[wr_len:buf_len]
-        wr_len = f.write(wr_buf)
-        if wr_len > buf_len:
-            raise ValueError('write size error')
-        elif wr_len < buf_len:
-            f.seek(ota_cxt.__download_size + wr_len, 0)
-            continue
-        else:
-            break
-        pass
-        """
     f.flush()
     f.close()
 
@@ -220,18 +206,22 @@ def _board_upgrade(fw_path):
 
 
 def example_ota():
+    __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
+    logging.basicConfig(format=__log_format)
 
+    global te
+    te = QcloudExplorer(device_file="sample/device_info.json")
+    te.enableLogger(logging.DEBUG)
     print("\033[1;36m ota test start...\033[0m")
 
-    te.user_on_connect = on_connect
-    te.user_on_disconnect = on_disconnect
-    te.user_on_message = on_message
-    te.user_on_publish = on_publish
-    te.user_on_subscribe = on_subscribe
-    te.user_on_unsubscribe = on_unsubscribe
-    te.user_on_ota_report = on_ota_report
+    global product_id
+    global device_name
+    product_id = te.getProductID()
+    device_name = te.getDeviceName()
 
-    # te.mqttInit(mqtt_domain="")
+    te.registerMqttCallback(on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe)
     te.connect()
 
     count = 0
@@ -248,9 +238,9 @@ def example_ota():
             time.sleep(1)
             count += 1
 
-    ota = te.otaInit("tt", "t1")
-    ota.ota_report_upgrade_success("0.0.1")
+    te.otaInit(product_id, device_name, on_ota_report)
 
+    """
     cnt = 0
     while True:
         if not te.isMqttConnected():
@@ -265,7 +255,7 @@ def example_ota():
         upgrade_fetch_success = True
         ota_cxt = OtaContextData()
 
-        te.otaReportVersion(_get_local_fw_running_version())
+        te.otaReportVersion(product_id, device_name, _get_local_fw_running_version())
         # wait for ack
         time.sleep(1)
 
@@ -274,8 +264,9 @@ def example_ota():
             download_finished = False
             while (download_finished is not True):
                 print("wait for ota upgrade command...")
-                if te.otaIsFetching():
-                    file_size, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_FILE_SIZE)
+                if te.otaIsFetching(product_id, device_name):
+                    file_size, state = te.otaIoctlNumber(product_id, device_name, OtaCmdType.IOT_OTAG_FILE_SIZE)
+                    print("state:%s" % state)
                     if state == "success":
                         ota_cxt.file_size = file_size
                     else:
@@ -283,7 +274,7 @@ def example_ota():
                         break
                     pass
 
-                    version, state = te.otaIoctlString(QcloudHub.OtaCmdType.IOT_OTAG_VERSION, 32)
+                    version, state = te.otaIoctlString(product_id, device_name, OtaCmdType.IOT_OTAG_VERSION, 32)
                     if state == "success":
                         ota_cxt.remote_version = version
 
@@ -292,13 +283,14 @@ def example_ota():
 
                     _update_fw_downloaded_size(ota_cxt)
 
-                    rc = te.otaDownloadStart(ota_cxt.download_size, ota_cxt.file_size)
+                    print("start download...")
+                    rc = te.otaDownloadStart(product_id, device_name, ota_cxt.download_size, ota_cxt.file_size)
                     if rc != 0:
                         upgrade_fetch_success = False
                         break
 
-                    while (te.otaIsFetchFinished() is not True):
-                        buf, rv_len = te.otaFetchYield(5000)
+                    while (te.otaIsFetchFinished(product_id, device_name, ) is not True):
+                        buf, rv_len = te.otaFetchYield(product_id, device_name, 5000)
                         if rv_len > 0:
                             rc = _save_fw_data_to_file(ota_cxt, buf, rv_len)
                             if rc != 0:
@@ -310,7 +302,7 @@ def example_ota():
                             upgrade_fetch_success = False
                             break
 
-                        fetched_size, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_FETCHED_SIZE)
+                        fetched_size, state = te.otaIoctlNumber(product_id, device_name, OtaCmdType.IOT_OTAG_FETCHED_SIZE)
                         if state == "success":
                             ota_cxt.download_size = fetched_size
                         else:
@@ -326,9 +318,9 @@ def example_ota():
 
                     if upgrade_fetch_success:
                         os.remove(ota_cxt.info_file_path)
-                        firmware_valid, state = te.otaIoctlNumber(QcloudHub.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
+                        firmware_valid, state = te.otaIoctlNumber(product_id, device_name, OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
                         if firmware_valid == 0:
-                            print("The firmware is valid")
+                            print("The firmware download success")
                             upgrade_fetch_success = True
                         else:
                             print("The firmware is invalid,state:%s" % state)
@@ -346,15 +338,15 @@ def example_ota():
             # Report after confirming that the burning is successful or failed
             packet_id = 0
             if upgrade_fetch_success:
-                packet_id = te.otaReportUpgradeSuccess(None)
+                rc, packet_id = te.otaReportUpgradeSuccess(product_id, device_name, None)
             else:
-                packet_id = te.otaReportUpgradeFail(None)
-            if packet_id >= 0:
+                rc, packet_id = te.otaReportUpgradeFail(product_id, device_name, None)
+            if rc == 0:
                 _wait_for_pub_ack(packet_id)
 
         g_report_res = False
         time.sleep(2)
-
+    """
     print("\033[1;36m ota test success...\033[0m")
     return True
 if __name__ == '__main__':
