@@ -44,7 +44,7 @@ class QcloudExplorer(object):
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
 
-        self.__provider = Providers(device_file, tls)
+        self.__provider = Providers(device_file, self.__userdata, tls)
         self.__hub = self.__provider.hub
         """
         向hub注册mqtt disconnect回调

@@ -27,8 +27,8 @@ class Providers(metaclass=SingletonType):
     """
     使用单例模式构建,保证hub对象只有一份
     """
-    def __init__(self, device_file, tls=True):
-        self.hub = QcloudHub(device_file, tls)
+    def __init__(self, device_file, userdata, tls=True):
+        self.hub = QcloudHub(device_file, userdata=userdata, tls=tls)
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)
