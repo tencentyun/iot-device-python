@@ -350,7 +350,8 @@ class QcloudHub(object):
         self.__user_topics_unsubscribe_request.clear()
         self.__user_topics.clear()
 
-        self.__gateway.gateway_reset()
+        if self.__gateway is not None:
+            self.__gateway.gateway_reset()
 
         """
         将disconnect事件通知到explorer
@@ -560,19 +561,13 @@ class QcloudHub(object):
 
         self.__protocol.disconnect()
         self.__loop_worker._thread.stop()
-    
+
     def subscribe(self, topic, qos):
-        self._logger.debug("sub topic:%s,qos:%d" % (topic, qos))
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         if isinstance(topic, tuple):
             topic, qos = topic
         if isinstance(topic, str):
-            if qos < 0:
-                raise ValueError('Invalid QoS level.')
-            if topic is None or len(topic) == 0:
-                raise ValueError('Invalid topic.')
-            pass
             self.__user_topics_request_lock.acquire()
             rc, mid = self.__protocol.subscribe(topic, qos)
             if rc == 0:

@@ -188,6 +188,7 @@ class AsyncConnClient(object):
     def connect(self):
         mqtt_port = self.__mqtt_tls_port
         if self.__tls:
+            print("tlstls....")
             try:
                 if self.__useWebsocket:
                     mqtt_port = self.__mqtt_socket_tls_port
@@ -216,19 +217,43 @@ class AsyncConnClient(object):
         rc, mid = -1, -1
         if self.__mqtt_client is None:
             return rc, mid
-
-        if qos == -1:
-            rc, mid = self.__mqtt_client.subscribe(topic)
-        else:
+        
+        if isinstance(topic, tuple):
+            topic, qos = topic
+        if isinstance(topic, str):
+            if qos < 0 or qos > 1:
+                raise ValueError('Invalid QoS level.')
+            if topic is None or len(topic) == 0:
+                raise ValueError('Invalid topic.')
+            pass
             rc, mid = self.__mqtt_client.subscribe(topic, qos)
-        if rc == mqtt.MQTT_ERR_SUCCESS:
-            self.__logger.debug("subscribe success topic:%s" % topic)
-            return 0, mid
-        elif rc == mqtt.MQTT_ERR_NO_CONN:
-            return 2, mid
-        else:
-            self.__logger.debug("subscribe error topic:%s" % topic)
-            return -1, mid
+            if rc == mqtt.MQTT_ERR_SUCCESS:
+                self.__logger.debug("subscribe success topic:%s" % topic)
+                return 0, mid
+            elif rc == mqtt.MQTT_ERR_NO_CONN:
+                return 2, mid
+            else:
+                self.__logger.debug("subscribe error topic:%s" % topic)
+                return -1, mid
+        # topic format [(topic1, qos),(topic2,qos)]
+        if isinstance(topic, list):
+            topic_list = []
+            for topic, qos in topic:
+                if qos < 0 or qos > 1:
+                    raise ValueError('Invalid QoS level.')
+                if topic is None or len(topic) == 0 or not isinstance(topic, str):
+                    raise ValueError('Invalid topic.')
+                topic_list.append((topic, qos))
+
+            rc, mid = self.__mqtt_client.subscribe(topic_list)
+            if rc == mqtt.MQTT_ERR_SUCCESS:
+                self.__logger.debug("subscribe success topic:%s" % topic)
+                return 0, mid
+            elif rc == mqtt.MQTT_ERR_NO_CONN:
+                return 2, mid
+            else:
+                self.__logger.debug("subscribe error topic:%s" % topic)
+                return -1, mid
 
     def unsubscribe(self, topic):
         rc, mid = -1, -1

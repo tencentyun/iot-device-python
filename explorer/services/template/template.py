@@ -199,7 +199,7 @@ class Template(object):
         self.__user_callback[property_topic] = peopery_cb
         self.__user_callback[action_topic] = action_cb
         self.__user_callback[event_topic] = event_cb
-        self.__user_callback[service_topic] = event_cb
+        self.__user_callback[service_topic] = service_cb
 
         topic_list = []
         topic_list.append(property_topic)
@@ -209,12 +209,18 @@ class Template(object):
 
         self.__hub.register_explorer_callback(topic_list, callback)
 
-        topic_list.clear()
-        topic_list.append((property_topic, 0))
-        topic_list.append((action_topic, 0))
-        topic_list.append((event_topic, 0))
-        topic_list.append((service_topic, 1))
-        return self.__hub.subscribe(topic_list, 0)
+        # topic_list.clear()
+        # topic_list.append((service_topic, 0))
+        # topic_list.append((property_topic, 0))
+        # topic_list.append((action_topic, 0))
+        # topic_list.append((event_topic, 0))
+        # return self.__hub.subscribe(topic_list, 0)
+
+        self.__hub.subscribe(property_topic, 0)
+        self.__hub.subscribe(action_topic, 0)
+        self.__hub.subscribe(event_topic, 0)
+
+        return self.__hub.subscribe(service_topic, 0)
 
     def template_report(self, message):
         self.__assert(message)
