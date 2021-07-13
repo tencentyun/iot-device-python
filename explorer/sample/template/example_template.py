@@ -10,9 +10,6 @@ logging.basicConfig(format=__log_format)
 g_property_params = None
 g_control_msg_arrived = False
 te = None
-topic_property = None
-topic_action = None
-topic_event = None
 product_id = None
 device_name = None
 
@@ -46,45 +43,41 @@ def on_unsubscribe(mid, userdata):
     pass
 
 
-def _template_prop(params, userdata):
-    print("%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, params, userdata))
+def on_template_property(topic, qos, payload, userdata):
+    print("product_1:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     # save changed propertys
     global g_property_params
-    g_property_params = params
+    g_property_params = payload
 
     global g_control_msg_arrived
     g_control_msg_arrived = True
 
-    # deal down stream
+    # deal down stream and add your real value
 
-    # 测试,实际应发送用户属性数据
     global te
     reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
-    print("reply_param:%d" % reply_param.timeout_ms)
     te.templateControlReply(product_id, device_name, reply_param)
+    pass
 
+def on_template_service(topic, qos, payload, userdata):
+    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    pass
+
+def on_template_event(topic, qos, payload, userdata):
+    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
 
-def _template_event_post(payload, userdata):
-    print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
-    pass
+def on_template_action(topic, qos, payload, userdata):
+    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
-def _template_action(payload, userdata):
-    print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
-
-    clientToken = payload["clientToken"]
-    """
-    actionId = payload["actionId"]
-    timestamp = payload["timestamp"]
-    params = payload["params"]
-    """
     global te
+    clientToken = payload["clientToken"]
     reply_param = te.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
@@ -96,16 +89,71 @@ def _template_action(payload, userdata):
     te.templateActionReply(product_id, device_name, clientToken, res, reply_param)
     pass
 
-def on_template_changed(topic, qos, payload, userdata):
-    print("example_template:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
-    if topic == topic_property:
-        _template_prop(payload, userdata)
-    elif topic == topic_action:
-        _template_action(payload, userdata)
-    elif topic == topic_event:
-        _template_event_post(payload, userdata)
-    else:
-        print("unkonw topic %s" % topic)
+def report_json_construct_property(thing_list):
+
+    format_string = '"%s":"%s"'
+    format_int = '"%s":%d'
+    report_string = '{'
+    arg_cnt = 0
+
+    for arg in thing_list:
+        arg_cnt += 1
+        if arg.type == "int" or arg.type == "float" or arg.type == "bool" or arg.type == "enum":
+            report_string += format_int % (arg.key, arg.data)
+        elif arg.type == "string":
+            report_string += format_string % (arg.key, arg.data)
+        else:
+            print("type[%s] not support" % arg.type)
+            arg.data = " "
+        if arg_cnt < len(thing_list):
+            report_string += ","
+    pass
+    report_string += '}'
+
+    json_out = json.loads(report_string)
+
+    return json_out
+
+def report_json_construct_events(event_list):
+    # deal events and add your real value
+    status = 1
+    message = "test"
+    voltage = 20.0
+    name = "memory"
+    error_code = 0
+    timestamp = int(round(time.time() * 1000))
+
+    format_string = '"%s":"%s",'
+    format_int = '"%s":%d,'
+    events = []
+    for event in event_list:
+        string = '{'
+        string += format_string % ("eventId", event.event_name)
+        string += format_string % ("type", event.type)
+        string += format_int % ("timestamp", timestamp)
+        string += '"params":{'
+        for prop in event.events_prop:
+            if (prop.type == "int" or prop.type == "float"
+                    or prop.type == "bool" or prop.type == "enum"):
+                if prop.key == "status":
+                    string += format_int % (prop.key, status)
+                elif prop.key == "voltage":
+                    string += format_int % (prop.key, voltage)
+                elif prop.key == "error_code":
+                    string += format_int % (prop.key, error_code)
+            elif prop.type == "string":
+                if prop.key == "message":
+                    string += format_string % (prop.key, message)
+                elif prop.key == "name":
+                    string += format_string % (prop.key, name)
+
+        string = string[:len(string) - 1]
+        string += "}}"
+        events.append(json.loads(string))
+
+    json_out = '{"events":%s}' % json.dumps(events)
+
+    return json.loads(json_out)
 
 def example_template():
 
@@ -121,16 +169,6 @@ def example_template():
     global device_name
     product_id = te.getProductID()
     device_name = te.getDeviceName()
-    global topic_property
-    global topic_action
-    global topic_event
-    topic_property = "$thing/down/property/%s/%s" % (product_id, device_name)
-    topic_action = "$thing/down/action/%s/%s" % (product_id, device_name)
-    topic_event = "$thing/down/event/%s/%s" % (product_id, device_name)
-
-    te.registerUserCallback(topic_property, on_template_changed)
-    te.registerUserCallback(topic_action, on_template_changed)
-    te.registerUserCallback(topic_event, on_template_changed)
 
     te.connect()
 
@@ -148,9 +186,11 @@ def example_template():
             time.sleep(1)
             count += 1
 
-    te.templateInit(product_id, device_name)
+    te.templateInit(product_id, device_name, on_template_property,
+                        on_template_action, on_template_event, on_template_service)
     te.templateSetup(product_id, device_name, "sample/template/template_config.json")
 
+    """
     while True:
         try:
             msg = input()
@@ -179,64 +219,15 @@ def example_template():
                     te.templateReport(product_id, device_name, params_in)
                 else:
                     prop_list = te.getPropertyList(product_id, device_name)
-                    reports = {
-                        prop_list[0].key: prop_list[0].data,
-                        prop_list[1].key: prop_list[1].data,
-                        prop_list[2].key: prop_list[2].data,
-                        prop_list[3].key: prop_list[3].data
-                    }
+                    reports = report_json_construct_property(prop_list)
 
                     params_in = te.templateJsonConstructReportArray(product_id, device_name, reports)
                     te.templateReport(product_id, device_name, params_in)
 
             elif msg == "4":
                 event_list = te.getEventsList(product_id, device_name)
+                events = report_json_construct_events(event_list)
 
-                '''
-                for event in event_list:
-                    print("event_name:%s" % (event.event_name))
-                    for prop in event.events_prop:
-                        print("key:%s" % (prop.key))
-                '''
-
-                # deal events and add your real value
-                status = 1
-                message = "message"
-                voltage = 20.0
-                name = "memory"
-                error_code = 0
-                timestamp = int(round(time.time() * 1000))
-
-                events = {
-                    "events": [
-                        {
-                            "eventId": event_list[0].event_name,
-                            "type": event_list[0].type,
-                            "timestamp": timestamp,
-                            "params": {
-                                event_list[0].events_prop[0].key:status,
-                                event_list[0].events_prop[1].key:message
-                            }
-                        },
-                        {
-                            "eventId": event_list[1].event_name,
-                            "type": event_list[1].type,
-                            "timestamp": timestamp,
-                            "params": {
-                                event_list[1].events_prop[0].key:voltage
-                            }
-                        },
-                        {
-                            "eventId": event_list[2].event_name,
-                            "type": event_list[2].type,
-                            "timestamp": timestamp,
-                            "params": {
-                                event_list[2].events_prop[0].key:name,
-                                event_list[2].events_prop[1].key:error_code
-                            }
-                        }
-                    ]
-                }
                 te.templateEventPost(product_id, device_name, events)
 
             elif msg == "5":
@@ -250,9 +241,6 @@ def example_template():
 
             else:
                 sys.exit()
-
+    """
     print("\033[1;36m template test success...\033[0m")
     return True
-
-# if __name__ == '__main__':
-#     example_template()
