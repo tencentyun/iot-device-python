@@ -124,7 +124,7 @@ def product_init(pid, subdev_list, te):
     """
     te.templateInit(product_id, device_name, on_template_property,
                         on_template_action, on_template_event, on_template_service)
-    te.templateSetup(product_id, device_name, "sample/gateway/Z53CXC198M_config.json")
+    te.templateSetup(product_id, device_name, "sample/gateway/prdouct1_config.json")
     # sysinfo report
     sys_info = {
         "module_hardinfo": "X86-64",

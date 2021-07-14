@@ -106,6 +106,7 @@ def example_gateway():
             time.sleep(1)
             count += 1
 
+    """
     te.gatewayInit()
 
     subdev_list = te.gatewaySubdevGetConfigList()
@@ -189,7 +190,6 @@ def example_gateway():
 
             else:
                 sys.exit()
+    """
     print("\033[1;36m gateway test success...\033[0m")
     return True
-if __name__ == '__main__':
-	example_gateway()

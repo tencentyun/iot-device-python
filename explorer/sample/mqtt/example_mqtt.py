@@ -47,6 +47,7 @@ def example_mqtt():
     te.enableLogger(logging.DEBUG)
     te.connect()
 
+    """
     count = 0
     while True:
         if te.isMqttConnected():
@@ -64,5 +65,6 @@ def example_mqtt():
     dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
     print("current time:%s" % dt)
 
+    """
     print("\033[1;36m mqtt test success...\033[0m")
     return True

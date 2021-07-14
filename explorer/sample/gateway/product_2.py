@@ -123,7 +123,7 @@ def product_init(pid, subdev_list, te):
 
     te.templateInit(product_id, device_name, on_template_property,
                         on_template_action, on_template_event, on_template_service)
-    te.templateSetup(product_id, device_name, "sample/gateway/ZPHBLEB4J5_config.json")
+    te.templateSetup(product_id, device_name, "sample/gateway/prdouct2_config.json")
 
     # sysinfo report
     sys_info = {
