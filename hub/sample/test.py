@@ -20,7 +20,7 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_mqtt(self):
-        ret = mqtttest.example_mqtt("hub/sample/device_info.json")
+        ret = mqtttest.example_mqtt()
         self.assertEqual(ret, True)
 
     def test_dynreg(self):
@@ -29,27 +29,27 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_gateway(self):
-        ret = gatewaytest.example_gateway("hub/sample/device_info.json")
+        ret = gatewaytest.example_gateway()
         self.assertEqual(ret, True)
         pass
 
     def test_ota(self):
-        ret = otatest.example_ota("hub/sample/device_info.json")
+        ret = otatest.example_ota()
         self.assertEqual(ret, True)
         pass
 
     def test_broadcast(self):
-        ret = broadcasttest.example_broadcast("hub/sample/device_info.json")
+        ret = broadcasttest.example_broadcast()
         self.assertEqual(ret, True)
         pass
 
     def test_rrpc(self):
-        ret = rrpctest.example_rrpc("hub/sample/device_info.json")
+        ret = rrpctest.example_rrpc()
         self.assertEqual(ret, True)
         pass
 
     def test_shadow(self):
-        ret = shadowtest.example_shadow("hub/sample/device_info.json")
+        ret = shadowtest.example_shadow()
         self.assertEqual(ret, True)
         pass
 

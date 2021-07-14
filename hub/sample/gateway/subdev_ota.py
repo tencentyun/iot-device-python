@@ -6,10 +6,11 @@ import os
 from enum import Enum
 
 class SubdevOta(object):
-    def __init__(self, product_id, device_name, handle):
+    def __init__(self, product_id, device_name, handle, logger):
         self.__product_id = product_id
         self.__device_name = device_name
         self.__handle= handle
+        self.__logger = logger
         self.__thd = None
 
     class ThreadResource(object):
@@ -39,7 +40,7 @@ class SubdevOta(object):
         IOT_OTAG_CHECK_FIRMWARE = 4
 
     def __on_ota_report(self, topic, qos, payload, userdata):
-        print("%s:topic:%s,payload:%s" % (sys._getframe().f_code.co_name, topic, payload))
+        self.__logger.debug("%s:topic:%s,payload:%s" % (sys._getframe().f_code.co_name, topic, payload))
         code = payload["result_code"]
 
         if code == 0:
@@ -54,10 +55,10 @@ class SubdevOta(object):
 
     def __get_local_fw_info(self, ota_cxt):
         if ota_cxt.info_file_path is None:
-            print("file name is none")
+            self.__logger.error("file name is none")
             return 0
         if not os.path.exists(ota_cxt.info_file_path):
-            print("info file not exists")
+            self.__logger.error("info file not exists")
             return 0
 
         f = open(ota_cxt.info_file_path, "r")
@@ -77,7 +78,7 @@ class SubdevOta(object):
 
     def __cal_exist_fw_md5(self, ota_cxt, thd):
         if ota_cxt.file_path is None:
-            print("file name is none")
+            self.__logger.error("file name is none")
             return -1
 
         total_read = 0
@@ -94,14 +95,14 @@ class SubdevOta(object):
                 total_read += rlen
             pass
         f.close()
-        print("total read:%d" % total_read)
+        self.__logger.debug("total read:%d" % total_read)
 
         return 0
 
 
     def __update_fw_downloaded_size(self, ota_cxt, thd):
         local_size = self.__get_local_fw_info(ota_cxt)
-        print("local_size:%d,local_ver:%s,re_ver:%s" % (local_size, ota_cxt.local_version, ota_cxt.remote_version))
+        self.__logger.debug("local_size:%d,local_ver:%s,re_ver:%s" % (local_size, ota_cxt.local_version, ota_cxt.remote_version))
         if ((ota_cxt.local_version != ota_cxt.remote_version)
                 or (ota_cxt.download_size > ota_cxt.file_size)):
             ota_cxt.download_size = 0
@@ -109,7 +110,7 @@ class SubdevOta(object):
         ota_cxt.download_size = local_size
         rc = self.__cal_exist_fw_md5(ota_cxt, thd)
         if rc != 0:
-            print("cal md5 error")
+            self.__logger.error("cal md5 error")
             os.remove(ota_cxt.info_file_path)
             ota_cxt.download_size = 0
             return 0
@@ -119,7 +120,7 @@ class SubdevOta(object):
 
     def __save_fw_data_to_file(self, ota_cxt, buf, buf_len):
         if ota_cxt.file_path is None:
-            print("file name is none")
+            self.__logger.error("file name is none")
             return -1
         f = None
         wr_len = 0
@@ -134,7 +135,7 @@ class SubdevOta(object):
             if wr_len == buf_len:
                 break
             else:
-                print('write size error')
+                self.__logger.error('write size error')
                 f.close()
                 return -1
         f.flush()
@@ -158,10 +159,10 @@ class SubdevOta(object):
         thd.packet_id = packet_id
 
         while (thd.pub_ack is not True):
-            print("wait for ack...")
+            self.__logger.debug("wait for ack...")
             time.sleep(0.5)
             if wait_cnt == 0:
-                print("wait report pub ack timeout!")
+                self.__logger.error("wait report pub ack timeout!")
                 break
             wait_cnt -= 1
             pass
@@ -170,19 +171,17 @@ class SubdevOta(object):
 
 
     def __board_upgrade(self, fw_path):
-        print("burning firmware...")
+        self.__logger.debug("burning firmware...")
 
         return 0
 
     def update_reply_mid(self, mid):
         if self.__thd.packet_id == mid:
             self.__thd.pub_ack = True
-            print("publish ack id %d" % self.__thd.packet_id)
+            self.__logger.debug("publish ack id %d" % self.__thd.packet_id)
 
     def subdev_ota_start(self):
-        print("\033[1;36m ota test start...\033[0m")
-        __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-        logging.basicConfig(format=__log_format)
+        self.__logger.debug("\033[1;36m ota test start...\033[0m")
 
         thd = self.ThreadResource(self.__product_id, self.__device_name, self.__handle)
         self.__thd = thd
@@ -194,7 +193,7 @@ class SubdevOta(object):
             else:
                 if count >= 3:
                     # sys.exit()
-                    print("\033[1;31m ota test fail...\033[0m")
+                    self.__logger.error("\033[1;31m ota test fail...\033[0m")
                     # return False
                     # 区分单元测试和sample
                     return True
@@ -207,7 +206,7 @@ class SubdevOta(object):
         while True:
             if not self.__handle.isMqttConnected():
                 if cnt >= 10:
-                    print("mqtt disconnect")
+                    self.__logger.error("mqtt disconnect")
                     break
                 time.sleep(1)
                 cnt += 1
@@ -224,15 +223,14 @@ class SubdevOta(object):
             if thd.report_res:
                 download_finished = False
                 while (download_finished is not True):
-                    print("wait for ota upgrade command...")
+                    self.__logger.debug("wait for ota upgrade command")
                     if self.__handle.otaIsFetching(self.__product_id, self.__device_name):
                         file_size, state = self.__handle.otaIoctlNumber(self.__product_id, self.__device_name,
                                                                             self.OtaCmdType.IOT_OTAG_FILE_SIZE)
-                        print("state:%s" % state)
                         if state == "success":
                             ota_cxt.file_size = file_size
                         else:
-                            print("ota_ioctl_number fail..............")
+                            self.__logger.error("ota_ioctl_number fail")
                             break
                         pass
 
@@ -257,11 +255,11 @@ class SubdevOta(object):
                             if rv_len > 0:
                                 rc = self.__save_fw_data_to_file(ota_cxt, buf, rv_len)
                                 if rc != 0:
-                                    print("save data to file fail")
+                                    self.__logger.error("save data to file fail")
                                     upgrade_fetch_success = False
                                     break
                             elif rv_len < 0:
-                                print("download fail rc:%d" % rv_len)
+                                self.__logger.error("download fail rc:%d" % rv_len)
                                 upgrade_fetch_success = False
                                 break
 
@@ -274,7 +272,7 @@ class SubdevOta(object):
 
                             rc = self.__update_local_fw_info(ota_cxt)
                             if rc != 0:
-                                print("update local fw info error")
+                                self.__logger.error("update local fw info error")
                             pass
 
                             #time.sleep(0.1)
@@ -285,10 +283,10 @@ class SubdevOta(object):
                             firmware_valid, state = self.__handle.otaIoctlNumber(self.__product_id, self.__device_name,
                                                                                     self.OtaCmdType.IOT_OTAG_CHECK_FIRMWARE)
                             if firmware_valid == 0:
-                                print("The firmware(%s) download success" % (self.__product_id + self.__device_name))
+                                self.__logger.debug("The firmware(%s) download success" % (self.__product_id + self.__device_name))
                                 upgrade_fetch_success = True
                             else:
-                                print("The firmware(%s) is invalid,state:%s" % (state, self.__product_id + self.__device_name))
+                                self.__logger.error("The firmware(%s) is invalid,state:%s" % (state, self.__product_id + self.__device_name))
                                 upgrade_fetch_success = False
 
                         download_finished = True
@@ -312,5 +310,5 @@ class SubdevOta(object):
             thd.report_res = False
             time.sleep(2)
 
-        print("\033[1;36m ota test success...\033[0m")
+        self.__logger.debug("\033[1;36m ota test success...\033[0m")
         return True

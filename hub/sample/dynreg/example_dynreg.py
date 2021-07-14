@@ -1,29 +1,24 @@
 import sys
 import logging
 from hub.hub import QcloudHub
-# sys.path.append('../../')
 
+qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
-# log setting
 def example_dynreg():
-    __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-    logging.basicConfig(format=__log_format)
-
-    print("\033[1;36m dynreg test start...\033[0m")
+    logger.debug("\033[1;36m dynreg test start...\033[0m")
 
     return True
     """
-    dyn_explorer = QcloudHub('sample/device_info.json')
-    dyn_explorer.enableLogger(logging.DEBUG)
-    ret, msg = dyn_explorer.dynregDevice()
+    ret, msg = qcloud.dynregDevice()
 
     if ret == 0:
-        print('dynamic register success, psk: {}'.format(msg))
-        print("\033[1;36m dynamic register test success...\033[0m")
+        logger.debug('dynamic register success, psk: {}'.format(msg))
+        logger.debug("\033[1;36m dynamic register test success...\033[0m")
         return True
     else:
-        print('dynamic register fail, msg: {}'.format(msg))
-        print("\033[1;31m dynamic register test fail...\033[0m")
+        logger.debug('dynamic register fail, msg: {}'.format(msg))
+        logger.debug("\033[1;31m dynamic register test fail...\033[0m")
         # return False
         # 区分单元测试和sample
         return True
