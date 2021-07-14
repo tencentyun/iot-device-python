@@ -3,11 +3,8 @@ import time
 import logging
 from threading import Thread
 from explorer import explorer
-
-# from gateway import product_1 as product_1
-# from gateway import product_2 as product_2
-import product_1
-import product_2
+from gateway import product_1 as product_1
+from gateway import product_2 as product_2
 
 g_property_params = None
 g_control_msg_arrived = False
@@ -74,7 +71,7 @@ def task_2(product_id, subdev_list=[]):
     g_task_2_runing = True
 
 
-def example_gateway():
+def example_gateway(device_file):
     global g_task_1
     global g_task_2
 
@@ -82,7 +79,7 @@ def example_gateway():
     logging.basicConfig(format=__log_format)
 
     global te
-    te = explorer.QcloudExplorer(device_file="sample/device_info-wg.json")
+    te = explorer.QcloudExplorer(device_file=device_file)
     te.enableLogger(logging.WARNING)
 
     print("\033[1;36m gateway test start...\033[0m")

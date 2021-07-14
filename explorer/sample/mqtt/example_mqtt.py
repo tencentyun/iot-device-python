@@ -33,11 +33,11 @@ def on_unsubscribe(mid, userdata):
     pass
 
 
-def example_mqtt():
+def example_mqtt(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = QcloudExplorer(device_file="sample/device_info.json", userdata="",tls=True)
+    te = QcloudExplorer(device_file=device_file, userdata="",tls=True)
 
     print("\033[1;36m mqtt test start...\033[0m")
 

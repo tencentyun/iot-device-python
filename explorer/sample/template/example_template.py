@@ -155,11 +155,11 @@ def report_json_construct_events(event_list):
 
     return json.loads(json_out)
 
-def example_template():
+def example_template(device_file):
 
     print("\033[1;36m template test start...\033[0m")
     global te
-    te = explorer.QcloudExplorer(device_file="sample/device_info.json")
+    te = explorer.QcloudExplorer(device_file=device_file)
     te.enableLogger(logging.DEBUG)
     te.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,

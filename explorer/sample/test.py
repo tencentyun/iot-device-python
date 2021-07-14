@@ -6,7 +6,6 @@ from gateway import example_gateway as gatewaytest
 from mqtt import example_mqtt as mqtttest
 from ota import example_ota as otatest
 from template import example_template as templatetest
-from subscribe import example_subscribe as subscirbetest
 
 class MyTestCase(unittest.TestCase):
 
@@ -19,7 +18,7 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_mqtt(self):
-        ret = mqtttest.example_mqtt()
+        ret = mqtttest.example_mqtt("explorer/sample/device_info.json")
         self.assertEqual(ret, True)
 
     def test_dynreg(self):
@@ -28,22 +27,17 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_gateway(self):
-        ret = gatewaytest.example_gateway()
+        ret = gatewaytest.example_gateway("explorer/sample/device_info.json")
         self.assertEqual(ret, True)
         pass
 
     def test_ota(self):
-        ret = otatest.example_ota()
+        ret = otatest.example_ota("explorer/sample/device_info.json")
         self.assertEqual(ret, True)
         pass
 
     def test_template(self):
-        ret = templatetest.example_template()
-        self.assertEqual(ret, True)
-        pass
-
-    def test_subscribe(self):
-        ret = subscirbetest.example_subscribe()
+        ret = templatetest.example_template("explorer/sample/device_info.json")
         self.assertEqual(ret, True)
         pass
 
