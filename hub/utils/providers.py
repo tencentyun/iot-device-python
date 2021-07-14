@@ -14,6 +14,7 @@
 import string
 import json
 import threading
+from hub.log.log import Log
 from hub.protocol.protocol import AsyncConnClient
 
 class SingletonType(type):
@@ -241,10 +242,20 @@ class DeviceInfoProvider(object):
 
 class ConnClientProvider(metaclass=SingletonType):
     """
-    使用单例模式构建,保证hub对象只有一份
+    使用单例模式构建,保证对象只有一份
     """
     def __init__(self, host, product_id, device_name, device_secret, websocket=False, tls=True, logger=None):
         self.protocol = AsyncConnClient(host, product_id, device_name, device_secret, websocket, tls, logger)
+
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)
+
+class LoggerProvider(metaclass=SingletonType):
+    """
+    使用单例模式构建,保证对象只有一份
+    """
+    def __init__(self):
+        self.logger = Log()
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)

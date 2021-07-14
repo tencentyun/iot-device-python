@@ -28,8 +28,8 @@ from hub.log.log import Log
 from hub.utils.codec import Codec
 from hub.utils.providers import TopicProvider
 from hub.utils.providers import DeviceInfoProvider
-# from hub.protocol.protocol import AsyncConnClient
 from hub.utils.providers import ConnClientProvider
+from hub.utils.providers import LoggerProvider
 from hub.manager.manager import TaskManager
 from hub.services.gateway.gateway import Gateway
 from hub.services.rrpc.rrpc import Rrpc
@@ -50,7 +50,8 @@ class QcloudHub(object):
         self.__protocol = None
         self.__host = ""
         self.__paholog = logging.getLogger("Paho")
-        self._logger = Log()
+        self.__log_provider = LoggerProvider()
+        self._logger = self.__log_provider.logger
         self.__codec = Codec()
         # 确保__protocol初始化后再初始化__gateway,以便传参
         self.__gateway = None
@@ -134,6 +135,12 @@ class QcloudHub(object):
             """
             self._ntptime1 = 0
             self._ntptime2 = 0
+
+    class LoggerLevel(Enum):
+        INFO = "info"
+        DEBUG = "debug"
+        WARNING = "warring"
+        ERROR = "error"
 
     class device_property(object):
         def __init__(self):
@@ -465,12 +472,6 @@ class QcloudHub(object):
         """
         self.__user_topics.append(topic)
         self.__user_callback[topic] = callback
-
-    def enableLogger(self, level):
-        self._logger.set_level(level)
-        self._logger.enable_logger()
-        self.__protocol.enable_logger(self.__paholog)
-        self.__paholog.setLevel(level)
 
     def isMqttConnected(self):
         return self.__hub_state == self.HubState.CONNECTED
@@ -1069,3 +1070,32 @@ class QcloudHub(object):
 
         ota = self.__ota_map[client]
         return ota.ota_fetch_yield(buf_len)
+
+    def logInit(self, level, enable=True):
+        format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
+        logging.basicConfig(format=format)
+        logger_level = 0
+
+        provider = LoggerProvider()
+        logger = provider.logger
+
+        if enable is False:
+            logger.disable_logger()
+        else:
+            if level == self.LoggerLevel.INFO:
+                logger_level = logging.INFO
+            elif level == self.LoggerLevel.DEBUG:
+                logger_level = logging.DEBUG
+            elif level == self.LoggerLevel.WARNING:
+                logger_level = logging.WARNING
+            elif level == self.LoggerLevel.ERROR:
+                logger_level = logging.ERROR
+            else:
+                logger_level = logging.INFO
+
+            logger.set_level(logger_level)
+            logger.enable_logger()
+            self.__protocol.enable_logger(self.__paholog)
+            self.__paholog.setLevel(logger_level)
+
+        return logger

@@ -81,6 +81,12 @@ class QcloudExplorer(object):
             self.code = -1
             self.status_msg = None
 
+    class LoggerLevel(Enum):
+        INFO = "info"
+        DEBUG = "debug"
+        WARNING = "warring"
+        ERROR = "error"
+
     def __on_disconnect(self, client, userdata, rc):
         """
         清理数据模板资源
@@ -478,3 +484,6 @@ class QcloudExplorer(object):
 
     def otaFetchYield(self, productId, deviceName, buf_len):
         return self.__hub.otaFetchYield(productId, deviceName, buf_len)
+
+    def logInit(self, level, enable=True):
+        return self.__hub.logInit(level, enable)
