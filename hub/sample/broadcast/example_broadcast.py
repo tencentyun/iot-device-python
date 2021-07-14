@@ -34,11 +34,11 @@ def on_broadcast_cb(topic, qos, payload, userdata):
     print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
-def example_shadow():
+def example_broadcast(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = QcloudHub(device_file="sample/device_info.json", tls=True)
+    te = QcloudHub(device_file=device_file, tls=True)
     te.enableLogger(logging.INFO)
 
     print("\033[1;36m shadow test start...\033[0m")
@@ -70,6 +70,7 @@ def example_shadow():
     #     print("broadcast wait")
     #     time.sleep(1)
 
+    te.disconnect()
     print("\033[1;36m shadow test success...\033[0m")
     return True
 

@@ -205,12 +205,12 @@ def _board_upgrade(fw_path):
     return 0
 
 
-def example_ota():
+def example_ota(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
     global te
-    te = QcloudHub(device_file="sample/device_info.json")
+    te = QcloudHub(device_file=device_file)
     te.enableLogger(logging.DEBUG)
     print("\033[1;36m ota test start...\033[0m")
 
@@ -347,5 +347,6 @@ def example_ota():
         g_report_res = False
         time.sleep(2)
     """
+    te.disconnect()
     print("\033[1;36m ota test success...\033[0m")
     return True

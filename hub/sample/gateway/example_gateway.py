@@ -3,8 +3,9 @@ import time
 import logging
 import threading
 from hub.hub import QcloudHub
-from subdev_ota import SubdevOta
-sys.path.append('.')
+# from subdev_ota import SubdevOta
+from gateway import subdev_ota as SubdevOta
+# sys.path.append('.')
 
 subdev_map = {}
 
@@ -84,12 +85,12 @@ def publish_subdev_message(product_id, device_name, topic_suffix):
     }
     te.publish(topic_data, message, 1)
 
-def example_gateway():
+def example_gateway(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
     global te
-    te = QcloudHub(device_file="sample/device_info-wg.json")
+    te = QcloudHub(device_file=device_file)
     te.enableLogger(logging.DEBUG)
 
     print("\033[1;36m gateway test start...\033[0m")
@@ -180,5 +181,6 @@ def example_gateway():
             else:
                 sys.exit()
     """
+    te.disconnect()
     print("\033[1;36m gateway test success...\033[0m")
     return True

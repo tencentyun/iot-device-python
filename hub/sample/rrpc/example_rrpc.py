@@ -44,7 +44,7 @@ def on_rrpc_cb(topic, qos, payload, userdata):
     rrpc_reply = True
     pass
 
-def example_rrpc():
+def example_rrpc(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
@@ -52,7 +52,7 @@ def example_rrpc():
     global device_name
     global te
 
-    te = QcloudHub(device_file="sample/device_info.json", tls=True)
+    te = QcloudHub(device_file=device_file, tls=True)
     te.enableLogger(logging.DEBUG)
 
     print("\033[1;36m shadow test start...\033[0m")
@@ -84,5 +84,6 @@ def example_rrpc():
     #     print("rrpc while...")
     #     time.sleep(1)
 
+    te.disconnect()
     print("\033[1;36m shadow test success...\033[0m")
     return True

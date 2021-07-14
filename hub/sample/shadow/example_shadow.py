@@ -44,11 +44,11 @@ def on_shadow_cb(topic, qos, payload, userdata):
     print("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
-def example_shadow():
+def example_shadow(device_file):
     __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
     logging.basicConfig(format=__log_format)
 
-    te = QcloudHub(device_file="sample/device_info.json", tls=True)
+    te = QcloudHub(device_file=device_file, tls=True)
     te.enableLogger(logging.INFO)
 
     print("\033[1;36m shadow test start...\033[0m")
@@ -101,6 +101,7 @@ def example_shadow():
     payload = te.shadowJsonConstructReport(prduct_id, device_name, p_prop)
     te.shadowUpdate(prduct_id, device_name, payload, len(payload))
 
+    te.disconnect()
     print("\033[1;36m shadow test success...\033[0m")
     return True
 
