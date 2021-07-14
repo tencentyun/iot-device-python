@@ -58,6 +58,9 @@ class QcloudHub(object):
         self.__hub_state = self.HubState.INITIALIZED
         self._topic = TopicProvider(self.__device_info.product_id, self.__device_info.device_name)
 
+        self.__ntp_lock = threading.Lock()
+        self.__ntptime = self.NtpTime()
+
         """存放explorer层注册到hub层的回调函数
         只存放explorer层独有的功能所需的回调(诸如数据模板),
         类似on_connect等explorer和用户层都可能注册的回调在hub层使用专门的函数与之对应
@@ -117,6 +120,20 @@ class QcloudHub(object):
     class StateError(Exception):
         def __init__(self, err):
             Exception.__init__(self, err)
+
+    class NtpTime(object):
+        def __init__(self):
+            self._ntp_recvied = False
+            """
+            ntp请求的发送和接收时间戳
+            """
+            self._ntp_send_timestamp = 0
+            self._ntp_recv_timestamp = 0
+            """
+            从平台获取的ntptime时间戳
+            """
+            self._ntptime1 = 0
+            self._ntptime2 = 0
 
     class device_property(object):
         def __init__(self):
@@ -242,12 +259,15 @@ class QcloudHub(object):
                     self._logger.error("no callback for topic %s" % topic)
 
         elif topic_prefix == "$sys":
-            # 获取时间暂作为内部服务，有message回调通知用户
-            self.__user_on_message(topic, qos, payload, self.__userdata)
-            # if self.__user_callback[topic] is not None:
-            #     self.__user_callback[topic](topic, qos, payload, self.__userdata)
-            # else:
-            #     self._logger.error("no callback for topic %s" % topic)
+            # 获取时间作为内部服务,不通知到用户
+            if (('type' in payload and payload["type"] == "get") and
+                ('time' in payload and payload["time"] is not None)):
+                    self.__ntptime._ntp_recvied = True
+                    self.__ntptime._ntp_recv_timestamp = int(time.time() * 1000)
+                    self.__ntptime._ntptime1 = payload["ntptime1"]
+                    self.__ntptime._ntptime2 = payload["ntptime2"]
+            else:
+                self.__user_on_message(topic, qos, payload, self.__userdata)
 
         elif topic_prefix == "$gateway":
             self.__gateway.handle_gateway(topic, payload)
@@ -319,20 +339,6 @@ class QcloudHub(object):
             self.__hub_state = self.HubState.CONNECTED
             self.__event_worker._thread.post_message(self.__event_worker.EventPool.CONNECT, (session_flag, rc))
 
-            sys_topic_sub = self._topic.sys_topic_sub
-            sys_topic_pub = self._topic.sys_topic_pub
-            qos = 0
-            rc, mid = self.subscribe(sys_topic_sub, qos)
-            if rc == 0:
-                payload = {
-                    "type": "get",
-                    "resource": [
-                        "time"
-                    ],
-                }
-                self.publish(sys_topic_pub, payload, qos)
-            else:
-                self._logger.error("topic_subscribe error:rc:%d" % (rc))
         pass
 
     def __on_disconnect(self, client, user_data, rc):
@@ -543,6 +549,39 @@ class QcloudHub(object):
     
     def getDeviceName(self):
         return self.__device_info.device_name
+
+    def getNtpAccurateTime(self):
+        timestamp = -1
+
+        with self.__ntp_lock:
+            sys_topic_sub = self._topic.sys_topic_sub
+            sys_topic_pub = self._topic.sys_topic_pub
+            rc, mid = self.subscribe(sys_topic_sub, 0)
+            if rc == 0:
+                payload = {
+                    "type": "get",
+                    "resource": [
+                        "time"
+                    ],
+                }
+
+                self.__ntptime._ntp_send_timestamp = int(time.time() * 1000)
+                self.publish(sys_topic_pub, payload, 0)
+            else:
+                self._logger.error("[sys] subscribe error:rc:%d,topic:%s" % (rc, sys_topic_sub))
+                return timestamp
+
+            cnt = 0
+            while cnt < 3:
+                if self.__ntptime._ntp_recvied is True:
+                    timestamp = (self.__ntptime._ntptime1 + self.__ntptime._ntptime2 +
+                                    self.__ntptime._ntp_recv_timestamp - self.__ntptime._ntp_send_timestamp) / 2
+                    break
+                pass
+                time.sleep(0.2)
+                cnt += 1
+
+        return timestamp
 
     def connect(self):
         self.__loop_worker._connect_async_req = True

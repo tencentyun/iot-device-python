@@ -139,6 +139,9 @@ class QcloudExplorer(object):
     def getConnectStatus(self):
         return self.__hub.getConnectState()
 
+    def getNtpAccurateTime(self):
+        return self.__hub.getNtpAccurateTime()
+
     # start thread to connect and loop
     def connect(self):
         return self.__hub.connect()
