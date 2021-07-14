@@ -188,7 +188,6 @@ class AsyncConnClient(object):
     def connect(self):
         mqtt_port = self.__mqtt_tls_port
         if self.__tls:
-            print("tlstls....")
             try:
                 if self.__useWebsocket:
                     mqtt_port = self.__mqtt_socket_tls_port
