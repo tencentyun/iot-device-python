@@ -31,7 +31,8 @@ jobs:
         source test_env/bin/activate
         python setup.py install
         pip install -r requirements.txt
-        python sample/test.py
+        python explorer/sample/test.py
+        python hub/sample/test.py
 
     - name: Publish to Test PyPI
       env:
