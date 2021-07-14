@@ -60,7 +60,9 @@ def example_mqtt():
             time.sleep(1)
             count += 1
 
+    timestamp = te.getNtpAccurateTime()
+    dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
+    print("current time:%s" % dt)
+
     print("\033[1;36m mqtt test success...\033[0m")
     return True
-if __name__ == '__main__':
-	example_mqtt()
