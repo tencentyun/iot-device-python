@@ -363,10 +363,11 @@ class QcloudHub(object):
         将disconnect事件通知到explorer
         """
         ex_topic = "$explorer/from/disconnect"
-        if self.__user_callback[ex_topic] is not None:
-            self.__user_callback[ex_topic](client, self.__userdata, rc)
-        else:
-            self._logger.error("no callback for topic %s" % ex_topic)
+        if ex_topic in self.__explorer_callback:
+            if self.__explorer_callback[ex_topic] is not None:
+                self.__explorer_callback[ex_topic](client, self.__userdata, rc)
+            else:
+                self._logger.error("no callback for topic %s" % ex_topic)
 
         self.__event_worker._thread.post_message(self.__event_worker.EventPool.DISCONNECT, (rc))
         if self.__hub_state == self.HubState.DESTRUCTED:
