@@ -349,5 +349,3 @@ def example_ota():
     """
     print("\033[1;36m ota test success...\033[0m")
     return True
-if __name__ == '__main__':
-	example_ota()
