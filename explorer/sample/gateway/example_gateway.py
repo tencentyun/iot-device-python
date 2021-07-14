@@ -2,7 +2,7 @@ import sys
 import time
 import logging
 from threading import Thread
-from explorer import explorer
+from explorer.explorer import QcloudExplorer
 from gateway import product_1 as product_1
 from gateway import product_2 as product_2
 
@@ -21,82 +21,73 @@ g_product_list = ["PRODUCT1", "PRODUCT2"]
 g_product1_subdev_list = []
 g_product2_subdev_list = []
 
+qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
 def on_connect(flags, rc, userdata):
-    print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
+    logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
     pass
 
 
 def on_disconnect(rc, userdata):
-    print("%s:rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, rc, userdata))
+    logger.debug("%s:rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, rc, userdata))
     pass
 
 
 def on_message(topic, payload, qos, userdata):
-    print("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
+    logger.debug("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
     pass
 
 
 def on_publish(mid, userdata):
-    print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
+    logger.debug("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
 
 def on_subscribe(mid, granted_qos, userdata):
-    print("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
+    logger.debug("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
     pass
 
 
 def on_unsubscribe(mid, userdata):
-    print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
+    logger.debug("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
 
 # 调用数据模板入口函数
 def task_1(product_id, subdev_list=[]):
-
-    global te
-    product_1.product_init(product_id, subdev_list, te)
+    product_1.product_init(product_id, subdev_list, qcloud, logger)
 
     global g_task_1_runing
     g_task_1_runing = True
 
 
 def task_2(product_id, subdev_list=[]):
-
-    global te
-    product_2.product_init(product_id, subdev_list, te)
+    product_2.product_init(product_id, subdev_list, qcloud, logger)
 
     global g_task_2_runing
     g_task_2_runing = True
 
 
-def example_gateway(device_file):
+def example_gateway():
     global g_task_1
     global g_task_2
 
-    __log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-    logging.basicConfig(format=__log_format)
+    logger.debug("\033[1;36m gateway test start...\033[0m")
 
-    global te
-    te = explorer.QcloudExplorer(device_file=device_file)
-    te.enableLogger(logging.WARNING)
-
-    print("\033[1;36m gateway test start...\033[0m")
-
-    te.registerMqttCallback(on_connect, on_disconnect,
+    qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)
-    te.connect()
+    qcloud.connect()
 
     count = 0
     while True:
-        if te.isMqttConnected():
+        if qcloud.isMqttConnected():
             break
         else:
             if count >= 3:
                 # sys.exit()
-                print("\033[1;31m gateway test fail...\033[0m")
+                logger.error("\033[1;31m gateway test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
@@ -104,9 +95,9 @@ def example_gateway(device_file):
             count += 1
 
     """
-    te.gatewayInit()
+    qcloud.gatewayInit()
 
-    subdev_list = te.gatewaySubdevGetConfigList()
+    subdev_list = qcloud.gatewaySubdevGetConfigList()
 
     while True:
         try:
@@ -116,37 +107,37 @@ def example_gateway(device_file):
         else:
             if msg == "1":
                 for subdev in subdev_list:
-                    if te.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is not True:
-                        rc, mid = te.gatewaySubdevOnline(subdev.product_id, subdev.device_name)
+                    if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is not True:
+                        rc, mid = qcloud.gatewaySubdevOnline(subdev.product_id, subdev.device_name)
                         if rc == 0:
-                            te.updateSubdevStatus(subdev.product_id, subdev.device_name, "online")
-                            print("online success")
+                            qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "online")
+                            logger.debug("online success")
                         else:
-                            print("online fail")
+                            logger.error("online fail")
 
             elif msg == "2":
                 for subdev in subdev_list:
-                    if te.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is True:
-                        rc, mid = te.gatewaySubdevOffline(subdev.product_id, subdev.device_name)
+                    if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is True:
+                        rc, mid = qcloud.gatewaySubdevOffline(subdev.product_id, subdev.device_name)
                         if rc == 0:
-                            te.updateSubdevStatus(subdev.product_id, subdev.device_name, "offline")
-                            print("offline success")
+                            qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "offline")
+                            logger.debug("offline success")
                         else:
-                            print("offline fail")
+                            logger.error("offline fail")
 
             elif msg == "3":
-                rc, mid = te.gatewaySubdevBind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME", "SUBDEV_DEVICE_SECRET")
+                rc, mid = qcloud.gatewaySubdevBind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME", "SUBDEV_DEVICE_SECRET")
                 if rc == 0:
-                    print("bind success")
+                    logger.debug("bind success")
                 else:
-                    print("bind fail")
+                    logger.error("bind fail")
 
             elif msg == "4":
-                rc, mid = te.gatewaySubdevUnbind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME")
+                rc, mid = qcloud.gatewaySubdevUnbind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME")
                 if rc == 0:
-                    print("unbind success")
+                    logger.debug("unbind success")
                 else:
-                    print("unbind fail")
+                    logger.error("unbind fail")
 
             elif msg == "5":
                 if not g_task_1_runing:
@@ -174,7 +165,7 @@ def example_gateway(device_file):
                     g_task_2.start()
 
             elif msg == "6":
-                te.disconnect()
+                qcloud.disconnect()
                 # global g_task_1
                 if g_task_1.is_alive():
                     g_task_1.stop()
@@ -188,5 +179,6 @@ def example_gateway(device_file):
             else:
                 sys.exit()
     """
-    print("\033[1;36m gateway test success...\033[0m")
+    qcloud.disconnect()
+    logger.debug("\033[1;36m gateway test success...\033[0m")
     return True

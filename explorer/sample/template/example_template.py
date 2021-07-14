@@ -2,49 +2,48 @@ import sys
 import time
 import json
 import logging
-from explorer import explorer
-
-__log_format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-logging.basicConfig(format=__log_format)
+from explorer.explorer import QcloudExplorer
 
 g_property_params = None
 g_control_msg_arrived = False
-te = None
 product_id = None
 device_name = None
 
+qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
+
 def on_connect(flags, rc, userdata):
-    print("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
+    logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
     pass
 
 
 def on_disconnect(rc, userdata):
-    print("%s:rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, rc, userdata))
+    logger.debug("%s:rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, rc, userdata))
     pass
 
 
 def on_message(topic, payload, qos, userdata):
-    print("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
+    logger.debug("%s:topic:%s,payload:%s,qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, topic, payload, qos, userdata))
     pass
 
 
 def on_publish(mid, userdata):
-    print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
+    logger.debug("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
 
 def on_subscribe(mid, granted_qos, userdata):
-    print("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
+    logger.debug("%s:mid:%d,granted_qos:%s,userdata:%s" % (sys._getframe().f_code.co_name, mid, granted_qos, userdata))
     pass
 
 
 def on_unsubscribe(mid, userdata):
-    print("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
+    logger.debug("%s:mid:%d,userdata:%s" % (sys._getframe().f_code.co_name, mid, userdata))
     pass
 
 
 def on_template_property(topic, qos, payload, userdata):
-    print("product_1:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    logger.debug("product_1:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
     # save changed propertys
     global g_property_params
@@ -55,30 +54,28 @@ def on_template_property(topic, qos, payload, userdata):
 
     # deal down stream and add your real value
 
-    global te
-    reply_param = te.ReplyPara()
+    reply_param = qcloud.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = '\0'
 
-    te.templateControlReply(product_id, device_name, reply_param)
+    qcloud.templateControlReply(product_id, device_name, reply_param)
     pass
 
 def on_template_service(topic, qos, payload, userdata):
-    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    logger.debug("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
 def on_template_event(topic, qos, payload, userdata):
-    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    logger.debug("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
 
 def on_template_action(topic, qos, payload, userdata):
-    print("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    logger.debug("product_1:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
-    global te
     clientToken = payload["clientToken"]
-    reply_param = te.ReplyPara()
+    reply_param = qcloud.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
     reply_param.status_msg = "action execute success!"
@@ -86,7 +83,7 @@ def on_template_action(topic, qos, payload, userdata):
         "err_code": 0
     }
 
-    te.templateActionReply(product_id, device_name, clientToken, res, reply_param)
+    qcloud.templateActionReply(product_id, device_name, clientToken, res, reply_param)
     pass
 
 def report_json_construct_property(thing_list):
@@ -103,7 +100,7 @@ def report_json_construct_property(thing_list):
         elif arg.type == "string":
             report_string += format_string % (arg.key, arg.data)
         else:
-            print("type[%s] not support" % arg.type)
+            logger.err_code("type[%s] not support" % arg.type)
             arg.data = " "
         if arg_cnt < len(thing_list):
             report_string += ","
@@ -155,40 +152,37 @@ def report_json_construct_events(event_list):
 
     return json.loads(json_out)
 
-def example_template(device_file):
+def example_template():
+    logger.debug("\033[1;36m template test start...\033[0m")
 
-    print("\033[1;36m template test start...\033[0m")
-    global te
-    te = explorer.QcloudExplorer(device_file=device_file)
-    te.enableLogger(logging.DEBUG)
-    te.registerMqttCallback(on_connect, on_disconnect,
+    qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)
 
     global product_id
     global device_name
-    product_id = te.getProductID()
-    device_name = te.getDeviceName()
+    product_id = qcloud.getProductID()
+    device_name = qcloud.getDeviceName()
 
-    te.connect()
+    qcloud.connect()
 
     count = 0
     while True:
-        if te.isMqttConnected():
+        if qcloud.isMqttConnected():
             break
         else:
             if count >= 3:
                 # sys.exit()
-                print("\033[1;31m template test fail...\033[0m")
+                logger.error("\033[1;31m template test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
             time.sleep(1)
             count += 1
 
-    te.templateInit(product_id, device_name, on_template_property,
+    qcloud.templateInit(product_id, device_name, on_template_property,
                         on_template_action, on_template_event, on_template_service)
-    te.templateSetup(product_id, device_name, "sample/template/template_config.json")
+    qcloud.templateSetup(product_id, device_name, "sample/template/template_config.json")
 
     """
     while True:
@@ -210,37 +204,38 @@ def example_template(device_file):
                         "append_info": "your self define info"
                     }
                 }
-                te.templateReportSysInfo(product_id, device_name, sys_info)
+                qcloud.templateReportSysInfo(product_id, device_name, sys_info)
             elif msg == "2":
-                te.templateGetStatus(product_id, device_name, )
+                qcloud.templateGetStatus(product_id, device_name, )
             elif msg == "3":
                 if g_control_msg_arrived:
-                    params_in = te.templateJsonConstructReportArray(product_id, device_name, g_property_params)
-                    te.templateReport(product_id, device_name, params_in)
+                    params_in = qcloud.templateJsonConstructReportArray(product_id, device_name, g_property_params)
+                    qcloud.templateReport(product_id, device_name, params_in)
                 else:
-                    prop_list = te.getPropertyList(product_id, device_name)
+                    prop_list = qcloud.getPropertyList(product_id, device_name)
                     reports = report_json_construct_property(prop_list)
 
-                    params_in = te.templateJsonConstructReportArray(product_id, device_name, reports)
-                    te.templateReport(product_id, device_name, params_in)
+                    params_in = qcloud.templateJsonConstructReportArray(product_id, device_name, reports)
+                    qcloud.templateReport(product_id, device_name, params_in)
 
             elif msg == "4":
-                event_list = te.getEventsList(product_id, device_name)
+                event_list = qcloud.getEventsList(product_id, device_name)
                 events = report_json_construct_events(event_list)
 
-                te.templateEventPost(product_id, device_name, events)
+                qcloud.templateEventPost(product_id, device_name, events)
 
             elif msg == "5":
-                te.templateDeinit(product_id, device_name)
+                qcloud.templateDeinit(product_id, device_name)
 
             elif msg == "6":
-                te.disconnect()
+                qcloud.disconnect()
 
             elif msg == "7":
-                te.clearControl(product_id, device_name)
+                qcloud.clearControl(product_id, device_name)
 
             else:
                 sys.exit()
     """
-    print("\033[1;36m template test success...\033[0m")
+    qcloud.disconnect()
+    logger.debug("\033[1;36m template test success...\033[0m")
     return True

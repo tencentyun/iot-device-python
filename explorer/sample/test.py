@@ -18,7 +18,7 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_mqtt(self):
-        ret = mqtttest.example_mqtt("explorer/sample/device_info.json")
+        ret = mqtttest.example_mqtt()
         self.assertEqual(ret, True)
 
     def test_dynreg(self):
@@ -27,17 +27,17 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_gateway(self):
-        ret = gatewaytest.example_gateway("explorer/sample/device_info.json")
+        ret = gatewaytest.example_gateway()
         self.assertEqual(ret, True)
         pass
 
     def test_ota(self):
-        ret = otatest.example_ota("explorer/sample/device_info.json")
+        ret = otatest.example_ota()
         self.assertEqual(ret, True)
         pass
 
     def test_template(self):
-        ret = templatetest.example_template("explorer/sample/device_info.json")
+        ret = templatetest.example_template()
         self.assertEqual(ret, True)
         pass
 
