@@ -670,6 +670,15 @@ class QcloudHub(object):
         return self.__protocol.publish(topic, json.dumps(payload), qos)
     
     def dynregDevice(self, timeout=10):
+        """Dynamic register
+
+        Get the device secret from the Cloud
+        Args:
+            timeout: request timeout
+        Returns:
+            success: return zero and device secret
+            fail: -1 and error message
+        """
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
         url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
