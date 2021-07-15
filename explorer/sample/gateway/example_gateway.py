@@ -73,7 +73,8 @@ def example_gateway():
     global g_task_1
     global g_task_2
 
-    logger.debug("\033[1;36m gateway test start...\033[0m")
+    # logger.debug("\033[1;36m gateway test start...\033[0m")
+    print("\033[1;36m gateway test start...\033[0m")
 
     qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
@@ -87,7 +88,8 @@ def example_gateway():
         else:
             if count >= 3:
                 # sys.exit()
-                logger.error("\033[1;31m gateway test fail...\033[0m")
+                # logger.error("\033[1;31m gateway test fail...\033[0m")
+                print("\033[1;31m gateway test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
@@ -180,5 +182,6 @@ def example_gateway():
                 sys.exit()
     """
     qcloud.disconnect()
-    logger.debug("\033[1;36m gateway test success...\033[0m")
+    # logger.debug("\033[1;36m gateway test success...\033[0m")
+    print("\033[1;36m gateway test success...\033[0m")
     return True
