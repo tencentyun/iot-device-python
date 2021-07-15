@@ -1089,6 +1089,9 @@ class QcloudHub(object):
         return ota.ota_fetch_yield(buf_len)
 
     def logInit(self, level, enable=True):
+        if self.__protocol is None:
+            return None
+
         format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
         logging.basicConfig(format=format)
         logger_level = 0
