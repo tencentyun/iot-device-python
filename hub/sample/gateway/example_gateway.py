@@ -86,7 +86,8 @@ def publish_subdev_message(product_id, device_name, topic_suffix):
     qcloud.publish(topic_data, message, 1)
 
 def example_gateway():
-    logger.debug("\033[1;36m gateway test start...\033[0m")
+    # logger.debug("\033[1;36m gateway test start...\033[0m")
+    print("\033[1;36m gateway test start...\033[0m")
 
     product_id = qcloud.getProductID()
     device_name = qcloud.getDeviceName()
@@ -103,7 +104,8 @@ def example_gateway():
         else:
             if count >= 3:
                 # sys.exit()
-                logger.error("\033[1;31m gateway test fail...\033[0m")
+                # logger.error("\033[1;31m gateway test fail...\033[0m")
+                print("\033[1;31m gateway test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
@@ -174,5 +176,6 @@ def example_gateway():
                 sys.exit()
     """
     qcloud.disconnect()
-    logger.debug("\033[1;36m gateway test success...\033[0m")
+    # logger.debug("\033[1;36m gateway test success...\033[0m")
+    print("\033[1;36m gateway test success...\033[0m")
     return True

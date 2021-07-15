@@ -153,7 +153,8 @@ def report_json_construct_events(event_list):
     return json.loads(json_out)
 
 def example_template():
-    logger.debug("\033[1;36m template test start...\033[0m")
+    # logger.debug("\033[1;36m template test start...\033[0m")
+    print("\033[1;36m template test start...\033[0m")
 
     qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
@@ -173,7 +174,8 @@ def example_template():
         else:
             if count >= 3:
                 # sys.exit()
-                logger.error("\033[1;31m template test fail...\033[0m")
+                # logger.error("\033[1;31m template test fail...\033[0m")
+                print("\033[1;31m template test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
@@ -237,5 +239,6 @@ def example_template():
                 sys.exit()
     """
     qcloud.disconnect()
-    logger.debug("\033[1;36m template test success...\033[0m")
+    # logger.debug("\033[1;36m template test success...\033[0m")
+    print("\033[1;36m template test success...\033[0m")
     return True

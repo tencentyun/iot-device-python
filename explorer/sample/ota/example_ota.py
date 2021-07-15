@@ -207,9 +207,9 @@ def _board_upgrade(fw_path):
 
     return 0
 
-
 def example_ota():
-    logger.debug("\033[1;36m ota test start...\033[0m")
+    # logger.debug("\033[1;36m ota test start...\033[0m")
+    print("\033[1;36m ota test start...\033[0m")
 
     global product_id
     global device_name
@@ -228,7 +228,8 @@ def example_ota():
         else:
             if count >= 3:
                 # sys.exit()
-                logger.error("\033[1;31m ota test fail...\033[0m")
+                # logger.error("\033[1;31m ota test fail...\033[0m")
+                print("\033[1;31m ota test fail...\033[0m")
                 # return False
                 # 区分单元测试和sample
                 return True
@@ -343,5 +344,6 @@ def example_ota():
         time.sleep(2)
     """
     qcloud.disconnect()
-    logger.debug("\033[1;36m ota test success...\033[0m")
+    # logger.debug("\033[1;36m ota test success...\033[0m")
+    print("\033[1;36m ota test success...\033[0m")
     return True
