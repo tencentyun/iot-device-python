@@ -403,10 +403,14 @@ class QcloudExplorer(object):
         return rc, mid
 
     def dynregDevice(self, timeout=10):
-        """
-        dynamic device to tencent cloud
-        :param timeout: http/https timeout
-        :return: (code, msg): code 0 is success, msg is psk. Other is failed.
+        """Dynamic register
+
+        Get the device secret from the Cloud
+        Args:
+            timeout: request timeout
+        Returns:
+            success: return zero and device secret
+            fail: -1 and error message
         """
         return self.__hub.dynregDevice(timeout)
 
