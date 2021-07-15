@@ -169,6 +169,7 @@ class TopicProvider(object):
 
 class DeviceInfoProvider(object):
     def __init__(self, file_path, logger=None):
+        self.__file_path = file_path
         self.__logger = logger
         self.__logger.info('device_info file {}'.format(file_path))
 
@@ -199,6 +200,17 @@ class DeviceInfoProvider(object):
                 "device name: {}, product id: {}, product secret: {}, device secret: {}".
                 format(self.__device_name, self.__product_id,
                         self.__product_secret, self.__device_secret))
+
+    def update_config_file(self, psk):
+        with open(self.__file_path, '+r', encoding='utf-8') as f:
+            t = f.read()
+            t = t.replace(self.__device_secret, psk)
+            f.seek(0, 0)
+            f.write(t)
+            f.truncate()
+
+            self.__device_secret = psk
+        pass
 
     @property
     def auth_mode(self):

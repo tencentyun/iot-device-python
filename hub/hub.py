@@ -48,6 +48,7 @@ class QcloudHub(object):
         self.__userdata = userdata
         self.__provider = None
         self.__protocol = None
+        self.__domain = domain
         self.__host = ""
         self.__paholog = logging.getLogger("Paho")
         self.__log_provider = LoggerProvider()
@@ -492,6 +493,9 @@ class QcloudHub(object):
                 self.__explorer_callback[tp] = callback
         pass
 
+    def __protocol_reinit(self):
+        self.__protocol_init(self.__domain, self.__useWebsocket)
+
     # 连接协议(mqtt/websocket)初始化
     def __protocol_init(self, domain=None, useWebsocket=False):
         auth_mode = self.__device_info.auth_mode
@@ -501,6 +505,13 @@ class QcloudHub(object):
         ca = self.__device_info.ca_file
         cert = self.__device_info.cert_file
         key = self.__device_info.private_key_file
+
+        """
+        由于ConnClientProvider是单例模式,因此没有device secret不能创建protocol对象
+        """
+        if device_secret == "YOUR_DEVICE_SECRET":
+            self._logger.error("device secret invalid!")
+            return
 
         if useWebsocket is False:
             if domain is None or domain == "":
@@ -539,16 +550,16 @@ class QcloudHub(object):
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_message_timout(timeout)
-    
+
     def setKeepaliveInterval(self, interval):
         if self.__protocol is None:
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_keepalive_interval(interval)
-    
+
     def getProductID(self):
         return self.__device_info.product_id
-    
+
     def getDeviceName(self):
         return self.__device_info.device_name
 
@@ -668,7 +679,6 @@ class QcloudHub(object):
         product_secret = self.__device_info.product_secret
 
         request_text = request_format % (product_id, device_name)
-        # request_hash = hashlib.sha256(request_text.encode("utf-8")).hexdigest()
         request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
 
         nonce = random.randrange(2147483647)
@@ -677,9 +687,6 @@ class QcloudHub(object):
             "POST", "ap-guangzhou.gateway.tencentdevices.com",
             "/device/register", "", "hmacsha256", timestamp,
             nonce, request_hash)
-
-        # sign_base64 = base64.b64encode(hmac.new(product_secret.encode("utf-8"),
-        #                 sign_content.encode("utf-8"), hashlib.sha256).digest())
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
 
@@ -695,8 +702,6 @@ class QcloudHub(object):
         context = None
         if self.__tls:
             request_url = url_format % 'https'
-            # context = ssl.create_default_context(
-            #     ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
             context = self.__codec.Ssl().create_content()
         else:
             request_url = url_format % 'http'
@@ -705,7 +710,6 @@ class QcloudHub(object):
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
-            print("reply:%s" % reply_obj)
             resp = reply_obj['Response']
             if 'Len' in resp and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
@@ -716,6 +720,10 @@ class QcloudHub(object):
                     user_dict = json.loads(psk)
                     self._logger.info('encrypt type: {}'.format(
                         user_dict['encryptionType']))
+
+                    self.__device_info.update_config_file(user_dict['psk'])
+                    self.__protocol_reinit()
+
                     return 0, user_dict['psk']
                 else:
                     self._logger.warring('payload is null')
