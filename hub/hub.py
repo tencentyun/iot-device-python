@@ -520,9 +520,9 @@ class QcloudHub(object):
                 self.__host = product_id + domain
         else:
             if self.__tls:
-                self.__host = "wss:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
             else:
-                self.__host = "ws:" + product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
         self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
                                                 websocket=useWebsocket, tls=self.__tls, logger=self._logger)
         self.__protocol = self.__provider.protocol

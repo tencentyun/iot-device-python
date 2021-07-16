@@ -201,7 +201,7 @@ class AsyncConnClient(object):
                 mqtt_port = self.__mqtt_socket_tcp_port
             pass
         try:
-            self.__logger.debug("connect_async...%s", mqtt_port)
+            self.__logger.debug("connect_async (%s:%d)" % (self.__host, mqtt_port))
             self.__mqtt_client.connect_async(host=self.__host, port=mqtt_port, keepalive=self.__mqtt_keep_alive)
         except Exception as e:
             self.__logger.error("mqtt connect with async error:" + str(e))
