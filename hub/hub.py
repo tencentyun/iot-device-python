@@ -519,10 +519,8 @@ class QcloudHub(object):
             else:
                 self.__host = product_id + domain
         else:
-            if self.__tls:
-                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
-            else:
-                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+
         self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
                                                 websocket=useWebsocket, tls=self.__tls, logger=self._logger)
         self.__protocol = self.__provider.protocol
@@ -659,7 +657,6 @@ class QcloudHub(object):
         pass
 
     def publish(self, topic, payload, qos):
-        self._logger.debug("pub topic:%s,payload:%s,qos:%d" % (topic, payload, qos))
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         if topic is None or len(topic) == 0:
@@ -1033,7 +1030,7 @@ class QcloudHub(object):
         return ota.ota_md5_update(buf)
 
     def __ota_http_deinit(self, productId, deviceName, http):
-        print("__ota_http_deinit do nothing")
+        self._logger.debug("http deinit do nothing...")
 
     def httpInit(self, productId, deviceName, host, url, offset, size, timeoutSec):
         client = productId + deviceName
