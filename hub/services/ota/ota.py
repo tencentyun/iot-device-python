@@ -209,6 +209,7 @@ class Ota(object):
             raise ValueError('ota handle is uninitialized')
         message = self.__ota_gen_report_msg(version, progress, report_type)
         if message is not None:
+            self.__logger.debug("[ota report] %s" % (message))
             return self.__ota_publish(message, 0)
         else:
             self.__logger.error("message is none")
