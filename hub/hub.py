@@ -888,6 +888,17 @@ class QcloudHub(object):
         return self.__gateway.gateway_init(gateway_topic_sub, 0, json_data)
 
     def rrpcInit(self, productId, deviceName, callback):
+        """RRPC initialization
+
+        RRPC initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            callback: user received message callback
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -904,10 +915,22 @@ class QcloudHub(object):
         return rc, mid
 
     def rrpcReply(self, productId, deviceName, reply, length):
+        """RRPC reply
+
+        Reply rrpc request
+        Args:
+            productId: product id
+            deviceName: device name
+            reply: reply message
+            length: reply message length
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__rrpc_map.keys()
                 or self.__rrpc_map[client] is None):
-            self._logger.error("[template] not found template handle for client:%s" % (client))
+            self._logger.error("[rrpc] not found rrpc handle for client:%s" % (client))
             return None
 
         rrpc = self.__rrpc_map[client]
