@@ -933,6 +933,17 @@ class QcloudHub(object):
         return rc, mid
 
     def shadowInit(self, productId, deviceName, callback):
+        """Shadow initialization
+
+        Shadow initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            callback: user received message callback
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -949,6 +960,16 @@ class QcloudHub(object):
         return rc, mid
 
     def getShadow(self, productId, deviceName):
+        """Get shadow cache
+
+        Get cloud shadow cache
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__shadow_map.keys()
                 or self.__shadow_map[client] is None):
@@ -962,6 +983,16 @@ class QcloudHub(object):
         return rc, mid
 
     def shadowJsonConstructDesireAllNull(self, productId, deviceName):
+        """Construct json context
+
+        Construct json context to reset cloud cache
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: json context
+            fail: None
+        """
         client = productId + deviceName
         if (client not in self.__shadow_map.keys()
                 or self.__shadow_map[client] is None):
@@ -972,12 +1003,25 @@ class QcloudHub(object):
         return shadow.shadow_json_construct_desire_null(productId)
 
     def shadowUpdate(self, productId, deviceName, shadow_docs, length):
+        """Update shadow
+
+        Update cloud shadow cache
+        Args:
+            productId: product id
+            deviceName: device name
+            shadow_docs: update message
+            length: message length
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__shadow_map.keys()
                 or self.__shadow_map[client] is None):
             self._logger.error("[shadow] not found shadow handle for client:%s" % (client))
             return None
 
+        self._logger.debug("[shadow update] %s" % (shadow_docs))
         shadow = self.__shadow_map[client]
         rc, mid = shadow.shadow_update(shadow_docs)
         if rc != 0:
@@ -985,6 +1029,17 @@ class QcloudHub(object):
         return rc, mid
 
     def shadowJsonConstructReport(self, productId, deviceName, *args):
+        """Construct json context
+
+        Construct report json context
+        Args:
+            productId: product id
+            deviceName: device name
+            *args: variable parameters, type is device_property()
+        Returns:
+            success: json context
+            fail: None
+        """
         client = productId + deviceName
         if (client not in self.__shadow_map.keys()
                 or self.__shadow_map[client] is None):
