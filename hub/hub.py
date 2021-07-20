@@ -938,6 +938,17 @@ class QcloudHub(object):
         return rc, mid
     
     def broadcastInit(self, productId, deviceName, callback):
+        """Broadcast initialization
+
+        Broadcast initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            callback: user received message callback
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
