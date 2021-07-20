@@ -995,6 +995,16 @@ class QcloudHub(object):
         return shadow.shadow_json_construct_report(productId, *args)
 
     def otaInit(self, productId, deviceName, callback):
+        """Ota initialization
+
+        Ota initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            callback: user received message callback
+        Returns:
+            success: zero and subscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
@@ -1031,6 +1041,16 @@ class QcloudHub(object):
 
     # 是否应将ota句柄传入(支持多个下载进程?)
     def otaIsFetching(self, productId, deviceName):
+        """Is downloading
+
+        Is downloading
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: True
+            fail: False
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1041,6 +1061,16 @@ class QcloudHub(object):
         return ota.ota_is_fetching()
 
     def otaIsFetchFinished(self, productId, deviceName):
+        """Is download finished
+
+        Is download finished
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: True
+            fail: False
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1051,6 +1081,17 @@ class QcloudHub(object):
         return ota.ota_is_fetch_finished()
 
     def otaReportUpgradeSuccess(self, productId, deviceName, version):
+        """Report success message
+
+        Report upgrade success message to qcloud
+        Args:
+            productId: product id
+            deviceName: device name
+            version: firmware version
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1064,6 +1105,17 @@ class QcloudHub(object):
         return rc, mid
 
     def otaReportUpgradeFail(self, productId, deviceName, version):
+        """Report fail message
+
+        Report upgrade fail message to qcloud
+        Args:
+            productId: product id
+            deviceName: device name
+            version: firmware version
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1077,6 +1129,17 @@ class QcloudHub(object):
         return rc, mid
 
     def otaIoctlNumber(self, productId, deviceName, cmdType):
+        """User interaction
+
+        User interaction with SDK to get a number, like linux kernel ioctl
+        Args:
+            productId: product id
+            deviceName: device name
+            cmdType: interaction command
+        Returns:
+            success: the number you want and 'success' message
+            fail: negative number and error message
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1087,6 +1150,18 @@ class QcloudHub(object):
         return ota.ota_ioctl_number(cmdType)
 
     def otaIoctlString(self, productId, deviceName, cmdType, length):
+        """User interaction
+
+        User interaction with SDK to get a string, like linux kernel ioctl
+        Args:
+            productId: product id
+            deviceName: device name
+            cmdType: interaction command
+            length: command length
+        Returns:
+            success: the string you want and 'success' message
+            fail: negative number and error message
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1097,6 +1172,16 @@ class QcloudHub(object):
         return ota.ota_ioctl_string(cmdType, length)
 
     def otaResetMd5(self, productId, deviceName):
+        """Reset md5 value
+
+        Reset md5 value
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: zero
+            fail: negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1107,6 +1192,17 @@ class QcloudHub(object):
         return ota.ota_reset_md5()
 
     def otaMd5Update(self, productId, deviceName,buf):
+        """Update md5 value
+
+        Calculate new message md5 and update old
+        Args:
+            productId: product id
+            deviceName: device name
+            buf: new message
+        Returns:
+            success: zero
+            fail: negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1120,6 +1216,21 @@ class QcloudHub(object):
         self._logger.debug("http deinit do nothing...")
 
     def httpInit(self, productId, deviceName, host, url, offset, size, timeoutSec):
+        """Http initialization
+
+        Http initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            host: http server host
+            url: http url
+            offset: http parameter 'Range' minimum
+            size: http parameter 'Range' max
+            timeoutSec: http overtime time
+        Returns:
+            success: zero
+            fail: negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1130,6 +1241,17 @@ class QcloudHub(object):
         return ota.http_init(host, url, offset, size, timeoutSec)
 
     def httpFetch(self, productId, deviceName, buf_len):
+        """Http download
+
+        Http download
+        Args:
+            productId: product id
+            deviceName: device name
+            buf_len: download max length
+        Returns:
+            success: downloaded content and length
+            fail: None and negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1140,6 +1262,17 @@ class QcloudHub(object):
         return ota.http_fetch(buf_len)
 
     def otaReportVersion(self, productId, deviceName, version):
+        """Report version
+
+        Report local firmware version
+        Args:
+            productId: product id
+            deviceName: device name
+            version: local firmware version
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1153,6 +1286,18 @@ class QcloudHub(object):
         return rc, mid
 
     def otaDownloadStart(self, productId, deviceName, offset, size):
+        """Start download
+
+        Start download
+        Args:
+            productId: product id
+            deviceName: device name
+            offset: download offset
+            size: download size
+        Returns:
+            success: zero
+            fail: negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
@@ -1163,6 +1308,17 @@ class QcloudHub(object):
         return ota.ota_download_start(offset, size)
 
     def otaFetchYield(self, productId, deviceName, buf_len):
+        """Http download
+
+        Perform an http download
+        Args:
+            productId: product id
+            deviceName: device name
+            buf_len: download max length
+        Returns:
+            success: downloaded content and length
+            fail: None and negative number
+        """
         client = productId + deviceName
         if (client not in self.__ota_map.keys()
                 or self.__ota_map[client] is None):
