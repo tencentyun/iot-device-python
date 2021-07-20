@@ -416,34 +416,109 @@ class QcloudExplorer(object):
 
     # gateway
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
+        """Sub-device status
+
+        Determine if the device is online
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: if device is online
+        """
         return self.__hub.isSubdevStatusOnline(sub_productId, sub_devName)
 
     def updateSubdevStatus(self, sub_productId, sub_devName, status):
-        """
-        更新本地维护的子设备状态(online/offline)
+        """Update device status
+
+        Update sub-device local status
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            status: new status
+        Returns:
+            success: None
         """
         return self.__hub.updateSubdevStatus(sub_productId, sub_devName, status)
 
     def gatewaySubdevGetConfigList(self):
+        """Get sub-device list
+
+        Get the list of sub-devices in the configuration file
+        Args: None
+        Returns:
+            success: sub-device list
+        """
         return self.__hub.gatewaySubdevGetConfigList()
 
     def gatewaySubdevSubscribe(self, topic):
+        """Subscribe sub-device topic
+
+        Subscribe sub-device topic
+        Args: sub-device topic
+        Returns:
+            success: zero and subscribe mid
+        """
         self.__hub.register_explorer_callback(topic, self.__handle_subdev_topic)
         return self.__hub.gatewaySubdevSubscribe(topic)
 
     def gatewaySubdevOnline(self, sub_productId, sub_devName):
+        """Make sub-device online
+
+        Make sub-device online
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: zero and publish mid
+        """
         return self.__hub.gatewaySubdevOnline(sub_productId, sub_devName)
 
     def gatewaySubdevOffline(self, sub_productId, sub_devName):
+        """Make sub-device offline
+
+        Make sub-device offline
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: zero and publish mid
+        """
         return self.__hub.gatewaySubdevOffline(sub_productId, sub_devName)
 
     def gatewaySubdevBind(self, sub_productId, sub_devName, sub_secret):
+        """Bind sub-device
+
+        Gateway device bind sub-device
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            sub_secret: sub-device secret
+        Returns:
+            success: zero and publish mid
+        """
         return self.__hub.gatewaySubdevBind(sub_productId, sub_devName, sub_secret)
 
     def gatewaySubdevUnbind(self, sub_productId, sub_devName):
+        """Unbind sub-device
+
+        Gateway device unbind sub-device
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            sub_secret: sub-device secret
+        Returns:
+            success: zero and publish mid
+        """
         return self.__hub.gatewaySubdevUnbind(sub_productId, sub_devName)
 
     def gatewayInit(self):
+        """Gateway initialization
+
+        Gateway initialization
+        Args: None
+        Returns:
+            success: zero and subscribe mid
+        """
         return self.__hub.gatewayInit()
 
     # ota

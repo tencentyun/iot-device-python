@@ -741,15 +741,50 @@ class QcloudHub(object):
                 return -1, err_code['Message']
 
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
+        """Sub-device status
+
+        Determine if the device is online
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: if device is online
+        """
         return self.__gateway.is_subdev_status_online(sub_productId, sub_devName)
 
     def updateSubdevStatus(self, sub_productId, sub_devName, status):
+        """Update device status
+
+        Update sub-device local status
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            status: new status
+        Returns:
+            success: None
+        """
         return self.__gateway.update_subdev_status(sub_productId, sub_devName, status)
 
     def gatewaySubdevGetConfigList(self):
+        """Get sub-device list
+
+        Get the list of sub-devices in the configuration file
+        Args: None
+        Returns:
+            success: sub-device list
+        """
         return self.__gateway.gateway_get_subdev_config_list()
 
     def gatewaySubdevOnline(self, sub_productId, sub_devName):
+        """Make sub-device online
+
+        Make sub-device online
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: zero and publish mid
+        """
         self.__assert(sub_productId)
         self.__assert(sub_devName)
 
@@ -757,6 +792,15 @@ class QcloudHub(object):
         return self.__gateway.gateway_subdev_online(gateway_topic_pub, 0, sub_productId, sub_devName)
 
     def gatewaySubdevOffline(self, sub_productId, sub_devName):
+        """Make sub-device offline
+
+        Make sub-device offline
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+        Returns:
+            success: zero and publish mid
+        """
         self.__assert(sub_productId)
         self.__assert(sub_devName)
 
@@ -764,6 +808,16 @@ class QcloudHub(object):
         return self.__gateway.gateway_subdev_offline(gateway_topic_pub, 0, sub_productId, sub_devName)
 
     def gatewaySubdevBind(self, sub_productId, sub_devName, sub_secret):
+        """Bind sub-device
+
+        Gateway device bind sub-device
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            sub_secret: sub-device secret
+        Returns:
+            success: zero and publish mid
+        """
         self.__assert(sub_productId)
         self.__assert(sub_devName)
         self.__assert(sub_secret)
@@ -772,6 +826,16 @@ class QcloudHub(object):
         return self.__gateway.gateway_subdev_bind(gateway_topic_pub, 0, sub_productId, sub_devName, sub_secret)
 
     def gatewaySubdevUnbind(self, sub_productId, sub_devName):
+        """Unbind sub-device
+
+        Gateway device unbind sub-device
+        Args:
+            sub_productId: sub-device product_id
+            sub_devName: sub-device device_name
+            sub_secret: sub-device secret
+        Returns:
+            success: zero and publish mid
+        """
         self.__assert(sub_productId)
         self.__assert(sub_devName)
 
@@ -779,6 +843,13 @@ class QcloudHub(object):
         return self.__gateway.gateway_subdev_unbind(gateway_topic_pub, 0, sub_productId, sub_devName)
 
     def gatewaySubdevGetBindList(self, product_id, device_name):
+        """Get sub-device list
+
+        Get the list of sub-devices in the qcloud
+        Args: None
+        Returns:
+            success: sub-device list
+        """
         self.__assert(product_id)
         self.__assert(device_name)
 
@@ -786,9 +857,23 @@ class QcloudHub(object):
         return self.__gateway.gateway_get_subdev_bind_list(gateway_topic_pub, 0, product_id, device_name)
     
     def gatewaySubdevSubscribe(self, topic):
+        """Subscribe sub-device topic
+
+        Subscribe sub-device topic
+        Args: sub-device topic
+        Returns:
+            success: zero and subscribe mid
+        """
         return self.__gateway.gateway_subdev_subscribe(topic)
 
     def gatewayInit(self):
+        """Gateway initialization
+
+        Gateway initialization
+        Args: None
+        Returns:
+            success: zero and publish mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
 
