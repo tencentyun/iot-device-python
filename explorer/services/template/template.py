@@ -189,6 +189,7 @@ class Template(object):
         topic_list.append(self.__topic.template_property_topic_sub)
         topic_list.append(self.__topic.template_event_topic_sub)
         topic_list.append(self.__topic.template_action_topic_sub)
+        topic_list.append(self.__topic.template_service_topic_sub)
         return self.__hub.unsubscribe(topic_list)
 
     def template_init(self, callback, peopery_cb, action_cb, event_cb, service_cb):
