@@ -375,9 +375,9 @@ class QcloudExplorer(object):
             return -1, -1
 
         template = self.__template_map[client]
-        # topic_pub = self.__topic.template_property_topic_pub
-        clientToken = self.__topic.control_clientToken
-        rc, mid = template.template_clear_control(clientToken)
+
+        # clientToken = self.__topic.control_clientToken
+        rc, mid = template.template_clear_control()
         if rc != 0:
             self.__logger.error("[template] publish error:rc:%d" % (rc))
         return rc, mid
