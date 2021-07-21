@@ -237,8 +237,9 @@ class Template(object):
         return self.__hub.publish(self.__topic.template_action_topic_pub, json_out, 0)
 
     # IOT_Template_ClearControl
-    def template_clear_control(self, clientToken):
-        self.__assert(clientToken)
+    def template_clear_control(self):
+        clientToken = self.__topic.control_clientToken
+
         message = {
             "method": "clear_control",
             "clientToken": clientToken
@@ -276,8 +277,12 @@ class Template(object):
         json_token = self.__build_empty_json(pid, None)
         client_token = json_token["clientToken"]
         events = message["events"]
+
+        method = "event_post"
+        if len(events) > 1:
+            method = "events_post"
         json_out = {
-            "method": "events_post",
+            "method": method,
             "clientToken": client_token,
             "events": events
         }
