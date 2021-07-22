@@ -126,54 +126,182 @@ class QcloudExplorer(object):
         #     self.__user_callback[topic](topic, qos, payload, self.__userdata)
         # else:
         #     self.__logger.error("no callback for topic %s" % topic)
+        pass
 
-    def enableLogger(self, level):
-        return self.__hub.enableLogger(level)
+    def setReconnectInterval(self, max_sec, min_sec):
+        """Set mqtt reconnect interval
+
+        Set mqtt reconnect interval
+        Args:
+            max_sec: reconnect max time
+            min_sec: reconnect min time
+        Returns:
+            success: default
+            fail: default
+        """
+        self.__hub.setReconnectInterval(max_sec, min_sec)
+
+    def setMessageTimout(self, timeout):
+        """Set message overtime time
+
+        Set message overtime time
+        Args:
+            timeout: mqtt keepalive value
+        Returns:
+            success: default
+            fail: default
+        """
+        self.__hub.setMessageTimout(timeout)
+
+    def setKeepaliveInterval(self, interval):
+        """Set mqtt keepalive interval
+
+        Set mqtt keepalive interval
+        Args:
+            interval: mqtt keepalive interval
+        Returns:
+            success: default
+            fail: default
+        """
+        self.__hub.setKeepaliveInterval(interval)
 
     def subscribe(self, topic, qos):
+        """Subscribe topic
+
+        Subscribe topic
+        Args:
+            topic: topic
+            qos: mqtt qos
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         return self.__hub.subscribe(topic, qos)
 
     def unsubscribe(self, topic):
+        """Unsubscribe topic
+
+        Unsubscribe topic what is subscribed
+        Args:
+            topic: topic
+        Returns:
+            success: zero and unsubscribe mid
+            fail: negative number and unsubscribe mid
+        """
         return self.__hub.unsubscribe(topic)
 
     def publish(self, topic, payload, qos):
+        """Publish message
+
+        Publish message
+        Args:
+            topic: topic
+            payload: publish message
+            qos: mqtt qos
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         return self.__hub.publish(topic, payload, qos)
 
     def isMqttConnected(self):
+        """Is mqtt connected
+
+        Is mqtt connected
+        Args: None
+        Returns:
+            success: True/False
+        """
         return self.__hub.isMqttConnected()
 
-    def getConnectStatus(self):
+    def getConnectState(self):
+        """Get connect state
+
+        Get device current connect state
+        Args: None
+        Returns:
+            success: connect state
+        """
         return self.__hub.getConnectState()
 
     def getNtpAccurateTime(self):
+        """Get NTP time
+
+        Get NTP time
+        Args: None
+        Returns:
+            success: thread start result
+            fail: thread start result
+        """
         return self.__hub.getNtpAccurateTime()
 
     # start thread to connect and loop
     def connect(self):
+        """Connect
+
+        Device connect
+        Args: None
+        Returns:
+            success: thread start result
+            fail: thread start result
+        """
         return self.__hub.connect()
 
     def disconnect(self):
+        """Disconnect
+
+        Device disconnect
+        Args: None
+        Returns:
+            success: default
+            fail: default
+        """
         self.__hub.disconnect()
 
     def registerMqttCallback(self, on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe):
-        """
-        注册用户层mqtt回调到hub层
+        """Register user mqtt callback
+
+        Register user mqtt callback for mqtt
+        Args:
+            on_connect: mqtt connect callback
+            on_disconnect: mqtt disconnect callback
+            on_message: mqtt message callback
+            on_publish: mqtt publish callback
+            on_subscribe: mqtt subscribe callback
+            on_unsubscribe: mqtt unsubscribe callback
+        Returns:
+            success: default
+            fail: default
         """
         self.__hub.registerMqttCallback(on_connect, on_disconnect,
                                         on_message, on_publish,
                                         on_subscribe, on_unsubscribe)
 
     def registerUserCallback(self, topic, callback):
-        """
-        用户注册回调接口(非mqtt回调)
+        """Register user callback
+
+        Register user callback for a topic
+        Args:
+            topic: topic
+            callback: user callback
+        Returns:
+            success: default
+            fail: default
         """
         self.__user_callback[topic] = callback
 
     def getEventsList(self, productId, deviceName):
-        """
-        获取数据模板配置文件event列表
+        """Get template event list
+
+        Get template event list from configuration file
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: template event list
+            fail: empty list
         """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
@@ -185,8 +313,15 @@ class QcloudExplorer(object):
         return template.get_events_list()
 
     def getActionList(self, productId, deviceName):
-        """
-        获取数据模板配置文件action列表
+        """Get template action list
+
+        Get template action list from configuration file
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: template action list
+            fail: empty list
         """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
@@ -198,8 +333,15 @@ class QcloudExplorer(object):
         return template.get_action_list()
 
     def getPropertyList(self, productId, deviceName):
-        """
-        获取数据模板配置文件property列表
+        """Get template property list
+
+        Get template property list from configuration file
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: template property list
+            fail: empty list
         """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
@@ -211,12 +353,39 @@ class QcloudExplorer(object):
         return template.get_property_list()
 
     def getProductID(self):
+        """Get product id
+
+        Get product id
+        Args: None
+        Returns:
+            success: product id
+            fail: None
+        """
         return self.__hub.getProductID()
 
     def getDeviceName(self):
+        """Get device name
+
+        Get device name
+        Args: None
+        Returns:
+            success: device name
+            fail: None
+        """
         return self.__hub.getDeviceName()
 
     def templateSetup(self, productId, deviceName, config_file=None):
+        """Parse json configuration file
+
+        Parse json configuration file
+        Args:
+            productId: product id
+            deviceName: device name
+            config_file: configuration file path
+        Returns:
+            success: zero
+            fail: negative number
+        """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
                 or self.__template_map[client] is None):
@@ -228,6 +397,17 @@ class QcloudExplorer(object):
 
     # 暂定传入json格式
     def templateEventPost(self, productId, deviceName, message):
+        """Report event/events infomation
+
+        Report device event/events infomation
+        Args:
+            productId: product id
+            deviceName: device name
+            message: device event/events infomation
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -243,10 +423,18 @@ class QcloudExplorer(object):
             self.__logger.error("[template] publish error:rc:%d" % (rc))
         return rc, mid
 
-    # 暂定传入的message为json格式(json/属性列表?)
-    # 传入json格式时该函数应改为内部函数,由template_report()调用
     def templateJsonConstructReportArray(self, productId, deviceName, payload):
-        # return self.__template.template_json_construct_report_array(self.__hub.getProductID(), payload)
+        """Construct json array
+
+        Construct json array
+        Args:
+            productId: product id
+            deviceName: device name
+            payload: report message, json type
+        Returns:
+            success: json message
+            fail: None
+        """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
                 or self.__template_map[client] is None):
@@ -257,6 +445,17 @@ class QcloudExplorer(object):
         return template.template_json_construct_report_array(productId, payload)
 
     def templateReportSysInfo(self, productId, deviceName, sysInfo):
+        """Report system infomation
+
+        Report device system infomation
+        Args:
+            productId: product id
+            deviceName: device name
+            sysInfo: device system infomation
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -273,6 +472,17 @@ class QcloudExplorer(object):
         return rc, mid
 
     def templateControlReply(self, productId, deviceName, replyPara):
+        """Report control reply
+
+        Report control reply after recvive control message
+        Args:
+            productId: product id
+            deviceName: device name
+            replyPara: description infomation, type is class ReplyPara()
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -287,9 +497,21 @@ class QcloudExplorer(object):
         if rc != 0:
             self.__logger.error("[template] publish error:rc:%d" % (rc))
         return rc, mid
-        
 
     def templateActionReply(self, productId, deviceName, clientToken, response, replyPara):
+        """Report action reply
+
+        Report action reply after recvive action message
+        Args:
+            productId: product id
+            deviceName: device name
+            clientToken: client token
+            response: report message
+            replyPara: other description infomation, type is class ReplyPara()
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -307,6 +529,16 @@ class QcloudExplorer(object):
 
     # 回调中处理IOT_Template_ClearControl
     def templateGetStatus(self, productId, deviceName):
+        """Get status
+
+        Get device status
+        Args:
+            productId: product id
+            deviceName: device name
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -320,6 +552,17 @@ class QcloudExplorer(object):
         return template.template_get_status(productId)
 
     def templateReport(self, productId, deviceName, message):
+        """Template message report
+
+        Report message to cloud
+        Args:
+            productId: product id
+            deviceName: device name
+            message: report message
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -343,6 +586,20 @@ class QcloudExplorer(object):
 
     def templateInit(self, productId, deviceName,
                         propertyCb, actionCb, eventCb, serviceCb):
+        """Template initialization
+
+        Template initialization
+        Args:
+            productId: product id
+            deviceName: device name
+            propertyCb: user received property message callback
+            actionCb: user received action message callback
+            eventCb: user received event message callback
+            serviceCb: user received service message callback
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -368,6 +625,16 @@ class QcloudExplorer(object):
         return rc, mid
 
     def clearControl(self, productId, deviceName):
+        """Clear control
+
+        Clear control message
+        Args:
+            productId: device product_id
+            deviceName: device device_name
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         client = productId + deviceName
         if (client not in self.__template_map.keys()
                 or self.__template_map[client] is None):
@@ -383,6 +650,16 @@ class QcloudExplorer(object):
         return rc, mid
 
     def templateDeinit(self, productId, deviceName):
+        """Template destroy
+
+        Template destroy
+        Args:
+            productId: device product_id
+            deviceName: device device_name
+        Returns:
+            success: zero and unsubscribe mid
+            fail: negative number and unsubscribe mid
+        """
         if self.__hub.getConnectState() is not self.__hub.HubState.CONNECTED:
             raise self.__hub.StateError("current state is not CONNECTED")
 
@@ -721,4 +998,14 @@ class QcloudExplorer(object):
         return self.__hub.otaFetchYield(productId, deviceName, buf_len)
 
     def logInit(self, level, enable=True):
+        """Log initialization
+
+        Log initialization
+        Args:
+            level: log level, type is class LoggerLevel()
+            enable: enable switch
+        Returns:
+            success: logger handle
+            fail: None
+        """
         return self.__hub.logInit(level, enable)
