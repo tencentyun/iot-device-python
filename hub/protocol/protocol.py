@@ -88,9 +88,11 @@ class AsyncConnClient(object):
         # 密钥认证
         if key_mode is True:
             # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cadata=self.__iot_ca_crt)
+            self.__logger.info("connect with key...")
             context = self.__codec.Ssl().create_content()
             self.__mqtt_client.tls_set_context(context)
         else:
+            self.__logger.info("connect with certificate...")
             ca = self.__certificate.ca_file
             cert = self.__certificate.cert_file
             key = self.__certificate.key_file
