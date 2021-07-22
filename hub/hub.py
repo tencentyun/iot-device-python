@@ -457,8 +457,19 @@ class QcloudHub(object):
     def registerMqttCallback(self, on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe):
-        """
-        注册用户层mqtt回调到hub层
+        """Register user mqtt callback
+
+        Register user mqtt callback for mqtt
+        Args:
+            on_connect: mqtt connect callback
+            on_disconnect: mqtt disconnect callback
+            on_message: mqtt message callback
+            on_publish: mqtt publish callback
+            on_subscribe: mqtt subscribe callback
+            on_unsubscribe: mqtt unsubscribe callback
+        Returns:
+            success: default
+            fail: default
         """
         self.__user_on_connect = on_connect
         self.__user_on_disconnect = on_disconnect
@@ -468,16 +479,37 @@ class QcloudHub(object):
         self.__user_on_unsubscribe = on_unsubscribe
 
     def registerUserCallback(self, topic, callback):
-        """
-        用户注册回调接口
+        """Register user callback
+
+        Register user callback for a topic
+        Args:
+            topic: topic
+            callback: user callback
+        Returns:
+            success: default
+            fail: default
         """
         self.__user_topics.append(topic)
         self.__user_callback[topic] = callback
 
     def isMqttConnected(self):
+        """Is mqtt connected
+
+        Is mqtt connected
+        Args: None
+        Returns:
+            success: True/False
+        """
         return self.__hub_state == self.HubState.CONNECTED
 
     def getConnectState(self):
+        """Get connect state
+
+        Get device current connect state
+        Args: None
+        Returns:
+            success: connect state
+        """
         return self.__hub_state
 
     def register_explorer_callback(self, topic, callback):
@@ -537,6 +569,16 @@ class QcloudHub(object):
         pass
 
     def setReconnectInterval(self, max_sec, min_sec):
+        """Set mqtt reconnect interval
+
+        Set mqtt reconnect interval
+        Args:
+            max_sec: reconnect max time
+            min_sec: reconnect min time
+        Returns:
+            success: default
+            fail: default
+        """
         if self.__protocol is None:
             self._logger.error("Set failed: client is None")
             return
@@ -544,24 +586,66 @@ class QcloudHub(object):
         self.__protocol.config_connect()
 
     def setMessageTimout(self, timeout):
+        """Set message overtime time
+
+        Set message overtime time
+        Args:
+            timeout: mqtt keepalive value
+        Returns:
+            success: default
+            fail: default
+        """
         if self.__protocol is None:
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_message_timout(timeout)
 
     def setKeepaliveInterval(self, interval):
+        """Set mqtt keepalive interval
+
+        Set mqtt keepalive interval
+        Args:
+            interval: mqtt keepalive interval
+        Returns:
+            success: default
+            fail: default
+        """
         if self.__protocol is None:
             self._logger.error("Set failed: client is None")
             return
         self.__protocol.set_keepalive_interval(interval)
 
     def getProductID(self):
+        """Get product id
+
+        Get product id
+        Args: None
+        Returns:
+            success: product id
+            fail: None
+        """
         return self.__device_info.product_id
 
     def getDeviceName(self):
+        """Get device name
+
+        Get device name
+        Args: None
+        Returns:
+            success: device name
+            fail: None
+        """
         return self.__device_info.device_name
 
     def getNtpAccurateTime(self):
+        """Get NTP time
+
+        Get NTP time
+        Args: None
+        Returns:
+            success: device current accurate timestamp
+            fail: -1
+        """
         timestamp = -1
 
         with self.__ntp_lock:
@@ -597,12 +681,28 @@ class QcloudHub(object):
         return timestamp
 
     def connect(self):
+        """Connect
+
+        Device connect
+        Args: None
+        Returns:
+            success: thread start result
+            fail: thread start result
+        """
         self.__loop_worker._connect_async_req = True
         with self.__loop_worker._exit_req_lock:
             self.__loop_worker._exit_req = False
         return self.__loop_worker._thread.start(self._loop)
 
     def disconnect(self):
+        """Disconnect
+
+        Device disconnect
+        Args: None
+        Returns:
+            success: default
+            fail: default
+        """
         self._logger.debug("disconnect")
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
@@ -615,6 +715,16 @@ class QcloudHub(object):
         self.__loop_worker._thread.stop()
 
     def subscribe(self, topic, qos):
+        """Subscribe topic
+
+        Subscribe topic
+        Args:
+            topic: topic
+            qos: mqtt qos
+        Returns:
+            success: zero and subscribe mid
+            fail: negative number and subscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         if isinstance(topic, tuple):
@@ -637,6 +747,15 @@ class QcloudHub(object):
         pass
 
     def unsubscribe(self, topic):
+        """Unsubscribe topic
+
+        Unsubscribe topic what is subscribed
+        Args:
+            topic: topic
+        Returns:
+            success: zero and unsubscribe mid
+            fail: negative number and unsubscribe mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         unsubscribe_topics = []
@@ -659,6 +778,17 @@ class QcloudHub(object):
         pass
 
     def publish(self, topic, payload, qos):
+        """Publish message
+
+        Publish message
+        Args:
+            topic: topic
+            payload: publish message
+            qos: mqtt qos
+        Returns:
+            success: zero and publish mid
+            fail: negative number and publish mid
+        """
         if self.__hub_state is not self.HubState.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
         if topic is None or len(topic) == 0:
@@ -1418,6 +1548,16 @@ class QcloudHub(object):
         return ota.ota_fetch_yield(buf_len)
 
     def logInit(self, level, enable=True):
+        """Log initialization
+
+        Log initialization
+        Args:
+            level: log level, type is class LoggerLevel()
+            enable: enable switch
+        Returns:
+            success: logger handle
+            fail: None
+        """
         if self.__protocol is None:
             return None
 
