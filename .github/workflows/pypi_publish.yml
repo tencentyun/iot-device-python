@@ -26,11 +26,15 @@ jobs:
         pip install setuptools wheel twine
 
     - name: Unittest TestCase
+      env:
+        PROVISIONING_PASSWORD: ${{ secrets.GPG_DECRYPT_PASSPHRASE }}
       run: |
         python -m venv test_env
         source test_env/bin/activate
         python setup.py install
         pip install -r requirements.txt
+        gpg --quiet -d --passphrase "$PROVISIONING_PASSWORD" --batch .github/files/explorer/device_info.json.asc > explorer/sample/device_info.json
+        gpg --quiet -d --passphrase "$PROVISIONING_PASSWORD" --batch .github/files/hub/device_info.json.asc > hub/sample/device_info.json
         python explorer/sample/test.py
         python hub/sample/test.py
 
