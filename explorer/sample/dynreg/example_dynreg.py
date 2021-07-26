@@ -44,9 +44,6 @@ def on_unsubscribe(mid, userdata):
 def example_dynreg():
     print("\033[1;36m dynreg test start...\033[0m")
 
-    return True
-
-    '''
     """
     start dynamic register
     """
@@ -82,5 +79,7 @@ def example_dynreg():
     dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
     logger.debug("current time:%s" % dt)
 
-    qcloud.disconnect()
-    '''
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m dynamic register test success...\033[0m")
+
+    return True

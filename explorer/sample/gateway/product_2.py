@@ -6,12 +6,17 @@ import logging
 qcloud = None
 g_property_params = None
 g_control_msg_arrived = False
+reply = False
 
 def on_subdev_cb(topic, qos, payload, userdata):
+    global reply
+    reply = True
     pass
 
 def on_template_property(topic, qos, payload, userdata):
     logger.debug("product_2:%s:params:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    global reply
+    reply = True
 
     global qcloud
     # save changed propertys
@@ -35,19 +40,24 @@ def on_template_property(topic, qos, payload, userdata):
 
 def on_template_service(topic, qos, payload, userdata):
     logger.debug("product_2:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    global reply
+    reply = True
     pass
 
 def on_template_event(topic, qos, payload, userdata):
     logger.debug("product_2:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    global reply
+    reply = True
     pass
 
 
 def on_template_action(topic, qos, payload, userdata):
     logger.debug("product_2:%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
+    global reply
+    reply = True
 
     global qcloud
     clientToken = payload["clientToken"]
-
     reply_param = qcloud.ReplyPara()
     reply_param.code = 0
     reply_param.timeout_ms = 5 * 1000
@@ -84,13 +94,24 @@ def report_json_construct(thing_list):
 
     return json_out
 
+def wait_for_reply():
+    cnt = 0
+    global reply
+    while cnt < 3:
+        if reply is True:
+            reply = False
+            return 0
+        time.sleep(0.2)
+        cnt += 1
+    return -1
+
 def product_init(pid, subdev_list, handle, log):
     global qcloud
     global logger
     qcloud = handle
     logger = log
 
-    subdev = subdev_list[0]
+    subdev = subdev_list
     global product_id
     global device_name
     product_id = pid
@@ -112,11 +133,11 @@ def product_init(pid, subdev_list, handle, log):
         logger.debug("gateway subdev subscribe success")
     else:
         logger.error("gateway subdev subscribe fail")
-
+        return -1
 
     qcloud.templateInit(product_id, device_name, on_template_property,
                         on_template_action, on_template_event, on_template_service)
-    qcloud.templateSetup(product_id, device_name, "sample/gateway/prdouct2_config.json")
+    qcloud.templateSetup(product_id, device_name, "explorer/sample/gateway/prdouct2_config.json")
 
     # sysinfo report
     sys_info = {
@@ -133,18 +154,31 @@ def product_init(pid, subdev_list, handle, log):
     rc, mid = qcloud.templateReportSysInfo(product_id, device_name, sys_info)
     if rc != 0:
         logger.error("sysinfo report fail")
-        return 1
+        return -1
+    rc = wait_for_reply()
+    if rc != 0:
+        logger.error("wait for report event reply timeout")
+        return -1
 
     rc, mid = qcloud.templateGetStatus(product_id, device_name)
     if rc != 0:
         logger.error("get status fail")
-        return 1
+        return -1
+    rc = wait_for_reply()
+    if rc != 0:
+        logger.error("wait for report event reply timeout")
+        return -1
 
-    while qcloud.isMqttConnected():
-        prop_list = qcloud.getPropertyList(product_id, device_name)
-        reports = report_json_construct(prop_list)
+    prop_list = qcloud.getPropertyList(product_id, device_name)
+    reports = report_json_construct(prop_list)
+    params_in = qcloud.templateJsonConstructReportArray(product_id, device_name, reports)
+    rc, mid = qcloud.templateReport(product_id, device_name, params_in)
+    if rc != 0:
+        logger.error("property report fail")
+        return -1
+    rc = wait_for_reply()
+    if rc != 0:
+        logger.error("wait for report event reply timeout")
+        return -1
 
-        params_in = qcloud.templateJsonConstructReportArray(product_id, device_name, reports)
-        qcloud.templateReport(product_id, device_name, params_in)
-
-        time.sleep(3)
+    return 0

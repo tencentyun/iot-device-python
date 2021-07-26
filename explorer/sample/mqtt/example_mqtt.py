@@ -36,8 +36,7 @@ def on_unsubscribe(mid, userdata):
 
 
 def example_mqtt():
-    # logger.debug("\033[1;36m mqtt test start...\033[0m")
-    print("\033[1;36m mqtt test start...\033[0m")
+    logger.debug("\033[1;36m mqtt test start...\033[0m")
 
     qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
@@ -50,20 +49,16 @@ def example_mqtt():
             break
         else:
             if count >= 3:
-                # logger.error("\033[1;31m mqtt test fail...\033[0m")
-                print("\033[1;31m mqtt test fail...\033[0m")
-                # return False
-                # 区分单元测试和sample
-                return True
+                logger.error("\033[1;31m mqtt test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
-    """
     timestamp = qcloud.getNtpAccurateTime()
     dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
     logger.debug("current time:%s" % dt)
-    """
-    qcloud.disconnect()
-    # logger.debug("\033[1;36m mqtt test success...\033[0m")
-    print("\033[1;36m mqtt test success...\033[0m")
+
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m mqtt test success...\033[0m")
+
     return True
