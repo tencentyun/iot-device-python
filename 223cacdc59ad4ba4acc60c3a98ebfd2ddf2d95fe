@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "361df922_e740c631",
+        "filename": "explorer/doc/订阅与取消订阅Topic.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-07-27T12:40:53Z",
+      "side": 1,
+      "message": "建议通过git mv重命名，可以建立文件追增",
+      "revId": "223cacdc59ad4ba4acc60c3a98ebfd2ddf2d95fe",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
