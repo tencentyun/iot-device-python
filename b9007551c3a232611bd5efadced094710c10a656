@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0ae63b4_33b0e690",
+        "filename": ".github/workflows/pypi_publish.yml",
+        "patchSetId": 5
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-07-28T01:13:31Z",
+      "side": 1,
+      "message": "需要加上 env:参数\n\n      env:\n        PROVISIONING_PASSWORD: ${{ secrets.GPG_DECRYPT_PASSPHRASE }}",
+      "revId": "b9007551c3a232611bd5efadced094710c10a656",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
