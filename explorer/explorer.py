@@ -31,20 +31,22 @@ import paho.mqtt.client as mqtt
 from enum import Enum
 from enum import IntEnum
 from Crypto.Cipher import AES
-from explorer.providers.providers import Providers
+from hub.hub import QcloudHub
 from explorer.services.template.template import Template
 
 class QcloudExplorer(object):
 
-    def __init__(self, device_file, tls=True, userdata=None):
+    def __init__(self, device_file, tls=True, userdata=None, domain=None, useWebsocket=False):
         self.__device_file = device_file
         self.__tls = tls
         """ 用户传参 """
         self.__userdata = userdata
+        self.__domain = domain
+        self.__useWebsocket = useWebsocket
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
 
-        self.__provider = Providers(device_file, self.__userdata, tls)
+        self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket)
         self.__hub = self.__provider.hub
         """
         向hub注册mqtt disconnect回调
@@ -607,7 +609,8 @@ class QcloudExplorer(object):
         构造对应client的template对象并加入字典
         """
         client = productId + deviceName
-        template = Template(self.__device_file, self.__tls, productId, deviceName, self.__logger)
+        template = Template(self.__device_file, self.__tls, productId, deviceName,
+                                self.__userdata, self.__domain, self.__useWebsocket, self.__logger)
 
         """
         注册用户数据模板topic(property/action/event)对应回调

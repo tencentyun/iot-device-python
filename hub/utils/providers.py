@@ -168,9 +168,11 @@ class TopicProvider(object):
         self.__clientToken = token
 
 class DeviceInfoProvider(object):
-    def __init__(self, file_path, logger=None):
+    def __init__(self, file_path):
         self.__file_path = file_path
-        self.__logger = logger
+        # self.__logger = logger
+        self.__log_provider = LoggerProvider()
+        self.__logger = self.__log_provider.logger
         self.__logger.info('device_info file {}'.format(file_path))
 
         self.__auth_mode = None

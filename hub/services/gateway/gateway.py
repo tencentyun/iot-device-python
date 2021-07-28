@@ -18,14 +18,17 @@ import json
 import random
 from enum import Enum
 from hub.utils.codec import Codec
+from hub.utils.providers import LoggerProvider
 from hub.utils.providers import ConnClientProvider
 
 class Gateway(object):
     def __init__(self, host, product_id, device_name, device_secret,
-                    websocket=False, tls=True, logger=None):
-        self.__logger = logger
+                    websocket=False, tls=True):
+        # self.__logger = logger
+        self.__log_provider = LoggerProvider()
+        self.__logger = self.__log_provider.logger
         self.__provider = ConnClientProvider(host, product_id, device_name, device_secret,
-                                                websocket=websocket, tls=tls, logger=logger)
+                                                websocket=websocket, tls=tls)
         self.__protocol = self.__provider.protocol
         self.__codec = Codec()
 
@@ -348,7 +351,7 @@ class Gateway(object):
         else:
             self.__logger.debug("client:%s %s fail" % (client_id, "get bind list"))
 
-        return self.__gateway_subdev_bind_list
+        return rc, self.__gateway_subdev_bind_list
 
     def gateway_get_subdev_config_list(self):
         """

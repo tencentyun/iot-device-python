@@ -24,7 +24,6 @@ import urllib.parse
 import urllib.error
 from enum import Enum
 from enum import IntEnum
-from hub.log.log import Log
 from hub.utils.codec import Codec
 from hub.utils.providers import TopicProvider
 from hub.utils.providers import DeviceInfoProvider
@@ -37,7 +36,26 @@ from hub.services.broadcast.broadcast import Broadcast
 from hub.services.shadow.shadow import Shadow
 from hub.services.ota.ota import Ota
 
-class QcloudHub(object):
+class SingletonType(type):
+    _instance_lock = threading.Lock()
+    def __call__(cls, *args, **kwargs):
+        if not hasattr(cls, "_instance"):
+            with SingletonType._instance_lock:
+                if not hasattr(cls, "_instance"):
+                    cls._instance = super(SingletonType,cls).__call__(*args, **kwargs)
+        return cls._instance
+
+class QcloudHub(metaclass=SingletonType):
+    """
+    使用单例模式构建,保证对象只有一份
+    """
+    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
+        self.hub = QcloudHubProvider(device_file, userdata=userdata, tls=tls, domain=domain, useWebsocket=useWebsocket)
+
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)
+
+class QcloudHubProvider(object):
     """事件核心处理层
     作为explorer/user层与协议层的中间层,负责上下层通道建立、消息分发等事物
     """
@@ -54,9 +72,9 @@ class QcloudHub(object):
         self.__log_provider = LoggerProvider()
         self._logger = self.__log_provider.logger
         self.__codec = Codec()
-        # 确保__protocol初始化后再初始化__gateway,以便传参
         self.__gateway = None
-        self.__device_info = DeviceInfoProvider(device_file, self._logger)
+        self.__device_info = DeviceInfoProvider(device_file)
+
         self.__hub_state = self.HubState.INITIALIZED
         self._topic = TopicProvider(self.__device_info.product_id, self.__device_info.device_name)
 
@@ -155,7 +173,7 @@ class QcloudHub(object):
         """ mqtt连接管理维护 """
         def __init__(self, logger=None):
             self._connect_async_req = False
-            self._exit_req = False
+            self._exit_req = True
             self._runing_state = False
             self._exit_req_lock = threading.Lock()
             self._thread = TaskManager.LoopThread(logger)
@@ -1009,7 +1027,7 @@ class QcloudHub(object):
 
         self.__gateway = Gateway(self.__host, self.__device_info.product_id, self.__device_info.device_name,
                                     self.__device_info.device_secret, websocket=self.__useWebsocket,
-                                    tls=self.__tls, logger=self._logger)
+                                    tls=self.__tls)
         json_data = self.__device_info.json_data
         gateway_topic_sub = self._topic.gateway_topic_sub
 
