@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9cbda20d_b5f51cb2",
+        "filename": "explorer/sample/gateway/example_gateway.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-07-28T08:59:46Z",
+      "side": 1,
+      "message": "无用代码需删除",
+      "revId": "8eeb3d4aff3aff5b2314b458bc0f6e0863d7ebc1",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
