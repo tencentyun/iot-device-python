@@ -5,10 +5,12 @@ import threading
 from hub.hub import QcloudHub
 from gateway import subdev_ota as SubdevOta
 
-qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
 logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
 subdev_map = {}
+thread_list = []
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -45,14 +47,16 @@ def on_subdev_cb(topic, qos, payload, userdata):
     logger.debug("%s:topic:%s,payload:%s" % (sys._getframe().f_code.co_name, topic, payload))
     pass
 
-def subdev_ota_thread(subdev_list=[]):
+def subdev_ota_thread(isTest, subdev_list=[]):
     for subdev in subdev_list:
         try:
             subdev_ota = SubdevOta(subdev.product_id, subdev.device_name, qcloud, logger)
             client = subdev.product_id + subdev.device_name
             global subdev_map
             subdev_map[client] = subdev_ota
-            thread = threading.Thread(target=subdev_ota.subdev_ota_start, args=())
+            thread = threading.Thread(target=subdev_ota.subdev_ota_start, args=(isTest))
+            global thread_list
+            thread_list.append(thread)
             thread.start()
         except:
             logger.error("Error: unable to start thread")
@@ -85,9 +89,8 @@ def publish_subdev_message(product_id, device_name, topic_suffix):
     }
     qcloud.publish(topic_data, message, 1)
 
-def example_gateway():
-    # logger.debug("\033[1;36m gateway test start...\033[0m")
-    print("\033[1;36m gateway test start...\033[0m")
+def example_gateway(isTest=True):
+    logger.debug("\033[1;36m gateway test start...\033[0m")
 
     product_id = qcloud.getProductID()
     device_name = qcloud.getDeviceName()
@@ -103,79 +106,68 @@ def example_gateway():
             break
         else:
             if count >= 3:
-                # sys.exit()
-                # logger.error("\033[1;31m gateway test fail...\033[0m")
-                print("\033[1;31m gateway test fail...\033[0m")
-                # return False
-                # 区分单元测试和sample
-                return True
+                logger.error("\033[1;31m gateway test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
     qcloud.gatewayInit()
 
     subdev_list = qcloud.gatewaySubdevGetConfigList()
-    """
-    while True:
-        try:
-            msg = input()
-        except KeyboardInterrupt:
-            sys.exit()
-        else:
-            if msg == "1":
-                for subdev in subdev_list:
-                    if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is not True:
-                        rc, mid = qcloud.gatewaySubdevOnline(subdev.product_id, subdev.device_name)
-                        if rc == 0:
-                            qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "online")
-                            subscribe_subdev_topic(subdev.product_id, subdev.device_name, "data")
-                            publish_subdev_message(subdev.product_id, subdev.device_name, "data")
-                            logger.debug("online success")
-                        else:
-                            logger.error("online fail")
 
-            elif msg == "2":
-                for subdev in subdev_list:
-                    if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is True:
-                        rc, mid = qcloud.gatewaySubdevOffline(subdev.product_id, subdev.device_name)
-                        if rc == 0:
-                            qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "offline")
-                            logger.debug("offline success")
-                        else:
-                            logger.error("offline fail")
-
-            elif msg == "3":
-                rc, mid = qcloud.gatewaySubdevBind("YOUR_SUBDEV_PRODUCT_ID",
-                                                "YOUR_SUBDEV_DEVICE_NAME",
-                                                "YOUR_SUBDEV_SECRET")
-                if rc == 0:
-                    logger.debug("bind success")
-                else:
-                    logger.error("bind fail")
-
-            elif msg == "4":
-                rc, mid = qcloud.gatewaySubdevUnbind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME")
-                if rc == 0:
-                    logger.debug("unbind success")
-                else:
-                    logger.error("unbind fail")
-
-            elif msg == "5":
-                bind_list = []
-                bind_list = qcloud.gatewaySubdevGetBindList(product_id, device_name)
-                for subdev in bind_list:
-                    logger.debug("subdev id:%s, name:%s" % (subdev.product_id, subdev.device_name))
-
-            elif msg == "6":
-                # 子设备固件升级
-                subdev_ota_thread(subdev_list)
-            elif msg == "7":
-                qcloud.disconnect()
-
+    """sub-device online"""
+    for subdev in subdev_list:
+        if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is not True:
+            rc, mid = qcloud.gatewaySubdevOnline(subdev.product_id, subdev.device_name)
+            if rc == 0:
+                qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "online")
+                subscribe_subdev_topic(subdev.product_id, subdev.device_name, "data")
+                publish_subdev_message(subdev.product_id, subdev.device_name, "data")
+                logger.debug("online success")
             else:
-                sys.exit()
+                logger.error("online fail")
+                return False
+
+    """sub-device offline"""
+    for subdev in subdev_list:
+        if qcloud.isSubdevStatusOnline(subdev.product_id, subdev.device_name) is True:
+            rc, mid = qcloud.gatewaySubdevOffline(subdev.product_id, subdev.device_name)
+            if rc == 0:
+                qcloud.updateSubdevStatus(subdev.product_id, subdev.device_name, "offline")
+                logger.debug("offline success")
+            else:
+                logger.error("offline fail")
+                return False
+
     """
-    qcloud.disconnect()
-    # logger.debug("\033[1;36m gateway test success...\033[0m")
-    print("\033[1;36m gateway test success...\033[0m")
+    rc, mid = qcloud.gatewaySubdevBind("YOUR_SUBDEV_PRODUCT_ID",
+                                        "YOUR_SUBDEV_DEVICE_NAME",
+                                        "YOUR_SUBDEV_SECRET")
+    if rc == 0:
+        logger.debug("bind success")
+    else:
+        logger.error("bind fail")
+        return False
+
+    rc, mid = qcloud.gatewaySubdevUnbind("SUBDEV_PRODUCT_ID", "SUBDEV_DEVICE_NAME")
+    if rc == 0:
+        logger.debug("unbind success")
+    else:
+        logger.error("unbind fail")
+        return False
+    """
+
+    bind_list = []
+    rc, bind_list = qcloud.gatewaySubdevGetBindList(product_id, device_name)
+    if rc != 0:
+        logger.error("get bind list error")
+        return False
+    
+    """子设备固件升级"""
+    subdev_ota_thread(isTest, subdev_list)
+    for thread in thread_list:
+        thread.join()
+
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m gateway test success...\033[0m")
     return True

@@ -180,7 +180,7 @@ class SubdevOta(object):
             self.__thd.pub_ack = True
             self.__logger.debug("publish ack id %d" % self.__thd.packet_id)
 
-    def subdev_ota_start(self):
+    def subdev_ota_start(self, isTest):
         self.__logger.debug("\033[1;36m ota test start...\033[0m")
 
         thd = self.ThreadResource(self.__product_id, self.__device_name, self.__handle)
@@ -192,11 +192,8 @@ class SubdevOta(object):
                 break
             else:
                 if count >= 3:
-                    # sys.exit()
                     self.__logger.error("\033[1;31m ota test fail...\033[0m")
-                    # return False
-                    # 区分单元测试和sample
-                    return True
+                    return False
                 time.sleep(1)
                 count += 1
 
@@ -217,6 +214,9 @@ class SubdevOta(object):
             ota_cxt = self.OtaContextData()
 
             self.__handle.otaReportVersion(self.__product_id, self.__device_name, self.__get_local_fw_running_version())
+            """测试模式"""
+            if isTest:
+                break
             # wait for ack
             time.sleep(1)
 

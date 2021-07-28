@@ -12,7 +12,8 @@ g_pub_ack = False
 product_id = None
 device_name = None
 
-qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
 logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
 class OtaContextData(object):
@@ -209,8 +210,7 @@ def _board_upgrade(fw_path):
 
 
 def example_ota():
-    # logger.debug("\033[1;36m ota test start...\033[0m")
-    print("\033[1;36m ota test start...\033[0m")
+    logger.debug("\033[1;36m ota test start...\033[0m")
 
     global product_id
     global device_name
@@ -228,18 +228,13 @@ def example_ota():
             break
         else:
             if count >= 3:
-                # sys.exit()
-                # logger.error("\033[1;31m ota test fail...\033[0m")
-                print("\033[1;31m ota test fail...\033[0m")
-                # return False
-                # 区分单元测试和sample
-                return True
+                logger.error("\033[1;31m ota test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
     qcloud.otaInit(product_id, device_name, on_ota_report)
 
-    """
     cnt = 0
     while True:
         if not qcloud.isMqttConnected():
@@ -255,6 +250,7 @@ def example_ota():
         ota_cxt = OtaContextData()
 
         qcloud.otaReportVersion(product_id, device_name, _get_local_fw_running_version())
+
         # wait for ack
         time.sleep(1)
 
@@ -343,8 +339,8 @@ def example_ota():
 
         g_report_res = False
         time.sleep(2)
-    """
-    qcloud.disconnect()
-    # logger.debug("\033[1;36m ota test success...\033[0m")
-    print("\033[1;36m ota test success...\033[0m")
+
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m ota test success...\033[0m")
+
     return True

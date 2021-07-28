@@ -8,7 +8,8 @@ prduct_id = None
 device_name = None
 rrpc_reply = False
 
-qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
 logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
 def on_connect(flags, rc, userdata):
@@ -45,9 +46,8 @@ def on_rrpc_cb(topic, qos, payload, userdata):
     rrpc_reply = True
     pass
 
-def example_rrpc():
-    # logger.debug("\033[1;36m shadow test start...\033[0m")
-    print("\033[1;36m shadow test start...\033[0m")
+def example_rrpc(isTest=True):
+    logger.debug("\033[1;36m rrpc test start...\033[0m")
 
     global prduct_id
     global device_name
@@ -65,21 +65,20 @@ def example_rrpc():
             break
         else:
             if count >= 3:
-                # logger.error("\033[1;31m mqtt test fail...\033[0m")
-                print("\033[1;31m mqtt test fail...\033[0m")
-                # return False
-                # 区分单元测试和sample
-                return True
+                logger.error("\033[1;31m mqtt test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
-    qcloud.rrpcInit(prduct_id, device_name, on_rrpc_cb)
+    rc, mid = qcloud.rrpcInit(prduct_id, device_name, on_rrpc_cb)
+    if rc != 0:
+        logger.error("rrpcInit error")
+        return False
 
-    # while rrpc_reply is False:
-    #     logger.debug("rrpc while...")
-    #     time.sleep(1)
+    while rrpc_reply is False and isTest is False:
+        logger.debug("rrpc while...")
+        time.sleep(1)
 
-    qcloud.disconnect()
-    # logger.debug("\033[1;36m shadow test success...\033[0m")
-    print("\033[1;36m shadow test success...\033[0m")
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m rrpc test success...\033[0m")
     return True

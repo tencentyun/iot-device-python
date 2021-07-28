@@ -1,6 +1,5 @@
 import unittest
 
-# from mqtt.example_mqtt import example_mqtt
 from dynreg import example_dynreg as dynregtest
 from gateway import example_gateway as gatewaytest
 from mqtt import example_mqtt as mqtttest
@@ -33,6 +32,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(ret, True)
         pass
 
+    @unittest.skip("skipping")
     def test_ota(self):
         ret = otatest.example_ota()
         self.assertEqual(ret, True)

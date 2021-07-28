@@ -4,7 +4,8 @@ import time
 import json
 from hub.hub import QcloudHub
 
-qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
 logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
 
 def on_connect(flags, rc, userdata):
@@ -36,9 +37,8 @@ def on_broadcast_cb(topic, qos, payload, userdata):
     logger.debug("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
     pass
 
-def example_broadcast():
-    # logger.debug("\033[1;36m shadow test start...\033[0m")
-    print("\033[1;36m shadow test start...\033[0m")
+def example_broadcast(isTest=True):
+    logger.debug("\033[1;36m broadcast test start...\033[0m")
 
     prduct_id = qcloud.getProductID()
     device_name = qcloud.getDeviceName()
@@ -54,21 +54,20 @@ def example_broadcast():
             break
         else:
             if count >= 3:
-                # logger.error("\033[1;31m mqtt test fail...\033[0m")
-                print("\033[1;31m mqtt test fail...\033[0m")
-                # return False
-                # 区分单元测试和sample
-                return True
+                logger.error("\033[1;31m broadcast test fail...\033[0m")
+                return False
             time.sleep(1)
             count += 1
 
-    qcloud.broadcastInit(prduct_id, device_name, on_broadcast_cb)
+    rc, mid = qcloud.broadcastInit(prduct_id, device_name, on_broadcast_cb)
+    if rc != 0:
+        logger.error("broadcast init error")
+        return False
 
-    # while True:
-    #     logger.debug("broadcast wait")
-    #     time.sleep(1)
+    while True and isTest is False:
+        logger.debug("broadcast wait")
+        time.sleep(1)
 
-    qcloud.disconnect()
-    # logger.debug("\033[1;36m shadow test success...\033[0m")
-    print("\033[1;36m shadow test success...\033[0m")
+    # qcloud.disconnect()
+    logger.debug("\033[1;36m broadcast test success...\033[0m")
     return True

@@ -3,7 +3,8 @@ import time
 import logging
 from hub.hub import QcloudHub
 
-qcloud = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
 logger = None
 
 def on_connect(flags, rc, userdata):
@@ -42,14 +43,12 @@ def on_unsubscribe(mid, userdata):
     pass
 
 def example_dynreg():
-    print("\033[1;36m dynreg test start...\033[0m")
+    print("\033[1;36m dynamic register test start...\033[0m")
 
-    return True
-
-    '''
     """
     start dynamic register
     """
+
     ret, msg = qcloud.dynregDevice()
     if ret == 0:
         print("\033[1;36m dynamic register test success, psk: {}\033[0m".format(msg))
@@ -60,7 +59,6 @@ def example_dynreg():
     """
     start mqtt connect
     """
-    global logger
     logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
     qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
@@ -73,7 +71,7 @@ def example_dynreg():
             break
         else:
             if count >= 3:
-                logger.error("\033[1;31m mqtt test fail...\033[0m")
+                logger.error("\033[1;31m dynamic register test fail...\033[0m")
                 return False
             time.sleep(1)
             count += 1
@@ -82,5 +80,5 @@ def example_dynreg():
     dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
     logger.debug("current time:%s" % dt)
 
-    qcloud.disconnect()
-    '''
+    # qcloud.disconnect()
+    return True
