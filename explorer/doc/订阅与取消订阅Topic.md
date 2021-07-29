@@ -1,5 +1,6 @@
 * [订阅与取消订阅](#订阅与取消订阅)
-  * [订阅 数据模板相关联 Topic 主题](#订阅-数据模板相关联-Topic-主题)
+  * [订阅数据模板相关联 Topic 主题](#订阅数据模板相关联-Topic-主题)
+  * [接收设备绑定解绑通知消息](#接收设备绑定解绑通知消息)
   * [取消订阅 Topic 主题](#取消订阅-Topic-主题)
 
 # 订阅与取消订阅
@@ -10,7 +11,7 @@
 
 本文主要描述 如何对数据模板相关联 Topic 的订阅与取消订阅。
 
-## 订阅 数据模板相关联 Topic 主题
+## 订阅数据模板相关联 Topic 主题
 
 运行 [TemplateSample.py](../../explorer/sample/template/example_template.py)，初始化数据模板会自动订阅数据模板相关联的属性、事件和行为类型的 Topic:
 ```
@@ -18,6 +19,52 @@ $thing/down/property/{ProductID}/{DeviceName}
 $thing/down/event/{ProductID}/{DeviceName}
 $thing/down/action/{ProductID}/{DeviceName}
 $thing/down/service/{ProductID}/{DeviceName}
+```
+订阅Topic后对应的下行消息由初始化数据模板时注册的回调函数给出，回调函数定义如下:
+```python
+def on_template_property(topic, qos, payload, userdata):
+  """属性回调
+  接受$thing/down/property/{ProductID}/{DeviceName}的下行消息
+  Args:
+    topic: 下行主题
+    qos: qos
+    payload: 下行消息内容
+    userdata: 用户注册的任意结构
+  """
+  pass
+
+def on_template_service(topic, qos, payload, userdata):
+  """服务回调
+  接受$thing/down/service/{ProductID}/{DeviceName}的下行消息
+  Args:
+    topic: 下行主题
+    qos: qos
+    payload: 下行消息内容
+    userdata: 用户注册的任意结构
+  """
+  pass
+
+def on_template_event(topic, qos, payload, userdata):
+  """事件回调
+  接受$thing/down/event/{ProductID}/{DeviceName}的下行消息
+  Args:
+    topic: 下行主题
+    qos: qos
+    payload: 下行消息内容
+    userdata: 用户注册的任意结构
+  """
+  pass
+
+def on_template_action(topic, qos, payload, userdata):
+  """行为回调
+  接受$thing/down/action/{ProductID}/{DeviceName}的下行消息
+  Args:
+    topic: 下行主题
+    qos: qos
+    payload: 下行消息内容
+    userdata: 用户注册的任意结构
+  """
+  pass
 ```
 
 示例代码如下：
@@ -69,6 +116,22 @@ qcloud.templateSetup(product_id, device_name, "sample/template/template_config.j
 2021-07-21 16:59:36,016.016 [log.py:35] - DEBUG - on_subscribe:mid:0,granted_qos:3,userdata:None
 ```
 观察日志可以看到成功设备订阅了Topic．
+
+## 接收设备绑定解绑通知消息
+数据模板初始化后程序配合腾讯连连可以体验接收下行消息功能．
+* 接收绑定设备通知
+在控制台打开设备二维码，使用腾讯连连小程序扫描绑定设备后设备端会收到`bind_device`消息，日志如下:
+```
+2021-07-29 15:09:09,407.407 [client.py:2165] - DEBUG - Received PUBLISH (d0, q0, r0, m0), '$thing/down/service/xxx/xxx', ...  (86 bytes)
+2021-07-29 15:09:09,407.407 [log.py:35] - DEBUG - on_template_service:payload:{'method': 'bind_device', 'clientToken': 'clientToken-8l1b8SX3cw', 'timestamp': 1627542549},userdata:None
+```
+
+* 接收解绑设备通知
+在腾讯连连中选择删除设备后设备端会收到`unbind_device`消息，日志如下:
+```
+2021-07-29 15:09:28,343.343 [client.py:2165] - DEBUG - Received PUBLISH (d0, q0, r0, m0), '$thing/down/service/xxx/xxx', ...  (118 bytes)
+2021-07-29 15:09:28,345.345 [log.py:35] - DEBUG - on_template_service:payload:{'method': 'unbind_device', 'DeviceId': 'xxx/xxx', 'clientToken': 'clientToken-Bcjwl8Io0', 'timestamp': 1627542568},userdata:None
+```
 
 ## 取消订阅 Topic 主题
 
