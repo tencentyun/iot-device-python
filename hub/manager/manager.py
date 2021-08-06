@@ -13,26 +13,24 @@
 
 import queue
 import threading
+from hub.utils.providers import LoggerProvider
 
 class TaskManager(object):
     def __init__(self):
         self.__init = True
 
     class LoopThread(object):
-        def __init__(self, logger=None):
-            self.__logger = logger
-            if logger is not None:
-                self.__logger.info("LoopThread init enter")
+        def __init__(self):
+            self.__provider = LoggerProvider()
+            self.__logger = self.__provider.logger
             self.__callback = None
             self.__thread = None
             self.__started = False
             self.__req_wait = threading.Event()
-            if logger is not None:
-                self.__logger.info("LoopThread init exit")
 
         def start(self, callback):
             if self.__started:
-                self.__logger.info("LoopThread already ")
+                self.__logger.info("LoopThread already")
                 return 1
             else:
                 self.__callback = callback
@@ -61,10 +59,9 @@ class TaskManager(object):
 
     # 用户注册回调分发线程
     class EventCbThread(object):
-        def __init__(self, logger=None):
-            self.__logger = logger
-            if self.__logger is not None:
-                self.__logger.info("EventCbThread init")
+        def __init__(self):
+            self.__provider = LoggerProvider()
+            self.__logger = self.__provider.logger
             self.__message_queue = queue.Queue(20)
             self.__event_callback = {}
             self.__started = False

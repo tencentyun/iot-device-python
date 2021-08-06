@@ -68,7 +68,6 @@ class QcloudHubProvider(object):
         self.__protocol = None
         self.__domain = domain
         self.__host = ""
-        self.__paholog = logging.getLogger("Paho")
         self.__log_provider = LoggerProvider()
         self._logger = self.__log_provider.logger
         self.__codec = Codec()
@@ -106,8 +105,8 @@ class QcloudHubProvider(object):
         self.__user_topics_request_lock = threading.Lock()
         self.__user_topics_unsubscribe_request_lock = threading.Lock()
 
-        self.__loop_worker = self.LoopWorker(self._logger)
-        self.__event_worker = self.EventWorker(self._logger)
+        self.__loop_worker = self.LoopWorker()
+        self.__event_worker = self.EventWorker()
         self.__register_event_callback()
 
         """
@@ -171,17 +170,17 @@ class QcloudHubProvider(object):
     # 管理连接相关资源
     class LoopWorker(object):
         """ mqtt连接管理维护 """
-        def __init__(self, logger=None):
+        def __init__(self):
             self._connect_async_req = False
             self._exit_req = True
             self._runing_state = False
             self._exit_req_lock = threading.Lock()
-            self._thread = TaskManager.LoopThread(logger)
+            self._thread = TaskManager.LoopThread()
 
     class EventWorker(object):
         """ 事件管理 """
-        def __init__(self, logger=None):
-            self._thread = TaskManager.EventCbThread(logger)
+        def __init__(self):
+            self._thread = TaskManager.EventCbThread()
         
         def _register_event_callback(self, connect, disconnect,
                                         message, publish, subscribe, unsubscribe):
@@ -469,7 +468,6 @@ class QcloudHubProvider(object):
                     self.__hub_state = self.HubState.DESTRUCTED
                 break
             self.__protocol.reconnect_wait()
-
         pass
 
     def registerMqttCallback(self, on_connect, on_disconnect,
@@ -1563,7 +1561,7 @@ class QcloudHubProvider(object):
         ota = self.__ota_map[client]
         return ota.ota_fetch_yield(buf_len)
 
-    def logInit(self, level, enable=True):
+    def logInit(self, level, filePath=None, maxBytes=0, backupCount=0, enable=True):
         """Log initialization
 
         Log initialization
@@ -1577,10 +1575,7 @@ class QcloudHubProvider(object):
         if self.__protocol is None:
             return None
 
-        format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
-        logging.basicConfig(format=format)
         logger_level = 0
-
         provider = LoggerProvider()
         logger = provider.logger
 
@@ -1600,7 +1595,16 @@ class QcloudHubProvider(object):
 
             logger.set_level(logger_level)
             logger.enable_logger()
-            self.__protocol.enable_logger(self.__paholog)
-            self.__paholog.setLevel(logger_level)
+
+            if (filePath is None or 
+                maxBytes == 0 or backupCount == 0):
+                self._logger.error("please set logger parameter:\n"
+                                    "\tfilePath: log file path.\n"
+                                    "\tmaxBytes: bytes of one file.\n"
+                                    "\tbackupCount: file number.")
+                return None
+
+            logger.create_file(filePath, maxBytes, backupCount)
+            self.__protocol.enable_logger(logger.get_logger())
 
         return logger

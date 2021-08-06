@@ -12,11 +12,17 @@
 # limitations under the License.
 
 import logging
+from logging.handlers import RotatingFileHandler
 
 class Log(object):
     def __init__(self):
         self.__logger = logging.getLogger("TecentQcloud")
+        self.__format = '%(asctime)s.%(msecs)03d [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s'
+        logging.basicConfig(format=self.__format)
         self.__enabled = False
+
+    def get_logger(self):
+        return self.__logger
 
     def enable_logger(self):
         self.__enabled = True
@@ -29,6 +35,11 @@ class Log(object):
 
     def set_level(self, level):
         self.__logger.setLevel(level)
+
+    def create_file(self, file_path, max_bytes, backup_count):
+        log_handler = RotatingFileHandler(file_path, max_bytes, backup_count)
+        log_handler.setFormatter(logging.Formatter(self.__format))
+        self.__logger.addHandler(log_handler)
 
     def debug(self, fmt, *args):
         if self.__enabled:

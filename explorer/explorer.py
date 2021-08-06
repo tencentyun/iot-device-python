@@ -58,8 +58,6 @@ class QcloudExplorer(object):
         # self.__register_hub_event_callback()
 
         self.__logger = self.__hub._logger
-        self.__PahoLog = logging.getLogger("Paho")
-        self.__PahoLog.setLevel(logging.DEBUG)
 
         self.__template_map = {}
 
@@ -1000,7 +998,7 @@ class QcloudExplorer(object):
         """
         return self.__hub.otaFetchYield(productId, deviceName, buf_len)
 
-    def logInit(self, level, enable=True):
+    def logInit(self, level, filePath, maxBytes, backupCount, enable=True):
         """Log initialization
 
         Log initialization
@@ -1011,4 +1009,4 @@ class QcloudExplorer(object):
             success: logger handle
             fail: None
         """
-        return self.__hub.logInit(level, enable)
+        return self.__hub.logInit(level, filePath, maxBytes, backupCount, enable)
