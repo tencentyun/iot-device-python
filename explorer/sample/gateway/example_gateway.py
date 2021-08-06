@@ -13,7 +13,7 @@ product_list = []
 thread_list = []
 
 qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))

@@ -59,7 +59,7 @@ def example_dynreg():
     """
     start mqtt connect
     """
-    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
     qcloud.registerMqttCallback(on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)

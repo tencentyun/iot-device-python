@@ -9,7 +9,7 @@ device_name = None
 reply = False
 
 qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -280,12 +280,15 @@ def example_template():
         logger.error("wait for report event reply timeout")
         return False
 
+    while True:
+        time.sleep(3)
     """clear control"""
     qcloud.clearControl(product_id, device_name)
 
     """template exit"""
     qcloud.templateDeinit(product_id, device_name)
-    # qcloud.disconnect()
+    qcloud.disconnect()
 
     logger.debug("\033[1;36m template test success...\033[0m")
     return True
+example_template()

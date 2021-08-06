@@ -7,7 +7,7 @@ from gateway import subdev_ota as SubdevOta
 
 provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
 qcloud = provider.hub
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, enable=True)
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
 
 subdev_map = {}
 thread_list = []
