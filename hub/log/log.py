@@ -37,7 +37,7 @@ class Log(object):
         self.__logger.setLevel(level)
 
     def create_file(self, file_path, max_bytes, backup_count):
-        log_handler = RotatingFileHandler(file_path, max_bytes, backup_count)
+        log_handler = RotatingFileHandler(filename=file_path, maxBytes=max_bytes, backupCount=backup_count)
         log_handler.setFormatter(logging.Formatter(self.__format))
         self.__logger.addHandler(log_handler)
 
