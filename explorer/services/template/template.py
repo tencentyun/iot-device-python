@@ -188,12 +188,17 @@ class Template(object):
         self.__replyAck = -1
 
     def template_deinit(self):
-        topic_list = []
-        topic_list.append(self.__topic.template_property_topic_sub)
-        topic_list.append(self.__topic.template_event_topic_sub)
-        topic_list.append(self.__topic.template_action_topic_sub)
-        topic_list.append(self.__topic.template_service_topic_sub)
-        return self.__hub.unsubscribe(topic_list)
+        # topic_list = []
+        # topic_list.append(self.__topic.template_property_topic_sub)
+        # topic_list.append(self.__topic.template_event_topic_sub)
+        # topic_list.append(self.__topic.template_action_topic_sub)
+        # topic_list.append(self.__topic.template_service_topic_sub)
+        # return self.__hub.unsubscribe(topic_list)
+
+        self.__hub.unsubscribe(self.__topic.template_property_topic_sub)
+        self.__hub.unsubscribe(self.__topic.template_event_topic_sub)
+        self.__hub.unsubscribe(self.__topic.template_action_topic_sub)
+        return self.__hub.unsubscribe(self.__topic.template_service_topic_sub)
 
     def template_init(self, callback, peopery_cb, action_cb, event_cb, service_cb):
         property_topic = self.__topic.template_property_topic_sub
@@ -212,13 +217,6 @@ class Template(object):
         topic_list.append(service_topic)
 
         self.__hub.register_explorer_callback(topic_list, callback)
-
-        # topic_list.clear()
-        # topic_list.append((service_topic, 0))
-        # topic_list.append((property_topic, 0))
-        # topic_list.append((action_topic, 0))
-        # topic_list.append((event_topic, 0))
-        # return self.__hub.subscribe(topic_list, 0)
 
         self.__hub.subscribe(property_topic, 0)
         self.__hub.subscribe(action_topic, 0)

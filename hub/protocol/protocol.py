@@ -239,12 +239,12 @@ class AsyncConnClient(object):
         # topic format [(topic1, qos),(topic2,qos)]
         if isinstance(topic, list):
             topic_list = []
-            for topic, qos in topic:
+            for t, qos in topic:
                 if qos < 0 or qos > 1:
                     raise ValueError('Invalid QoS level.')
-                if topic is None or len(topic) == 0 or not isinstance(topic, str):
+                if t is None or len(t) == 0 or not isinstance(t, str):
                     raise ValueError('Invalid topic.')
-                topic_list.append((topic, qos))
+                topic_list.append((t, qos))
 
             rc, mid = self.__mqtt_client.subscribe(topic_list)
             if rc == mqtt.MQTT_ERR_SUCCESS:
