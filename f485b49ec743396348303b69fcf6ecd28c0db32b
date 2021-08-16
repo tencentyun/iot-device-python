@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cfd79be9_e1bac784",
+        "filename": "explorer/services/template/template.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2021-08-16T07:44:58Z",
+      "side": 1,
+      "message": "后台不支持列表订阅，需单个订阅",
+      "revId": "f485b49ec743396348303b69fcf6ecd28c0db32b",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
