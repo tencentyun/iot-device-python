@@ -280,8 +280,8 @@ def example_template():
         logger.error("wait for report event reply timeout")
         return False
 
-    while True:
-        time.sleep(3)
+    # while True:
+    #     time.sleep(3)
     """clear control"""
     qcloud.clearControl(product_id, device_name)
 
