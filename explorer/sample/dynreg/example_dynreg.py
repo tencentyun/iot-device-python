@@ -49,7 +49,8 @@ def example_dynreg():
     """
     ret, msg = qcloud.dynregDevice()
     if ret == 0:
-        print("\033[1;36m dynamic register test success, psk: {}\033[0m".format(msg))
+        # print("\033[1;36m dynamic register test success, psk: {}\033[0m".format(msg))
+        print("\033[1;36m dynamic register test success, psk = msg 内容 \033[0m")
     else:
         print("\033[1;31m dynamic register test fail, msg: {}\033[0m".format(msg))
         return False
