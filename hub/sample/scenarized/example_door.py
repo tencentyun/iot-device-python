@@ -3,7 +3,8 @@ import logging
 import time
 from hub.hub import QcloudHub
 
-qcloud = QcloudHub(device_file="hub/sample/scenarized/door_device_info.json", tls=True)
+provider = QcloudHub(device_file="hub/sample/scenarized/door_device_info.json", tls=True)
+qcloud = provider.hub
 logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
 reply = False
 
