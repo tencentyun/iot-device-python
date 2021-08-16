@@ -680,6 +680,7 @@ class QcloudHubProvider(object):
                 self.publish(sys_topic_pub, payload, 0)
             else:
                 self._logger.error("[sys] subscribe error:rc:%d,topic:%s" % (rc, sys_topic_sub))
+                self.unsubscribe(sys_topic_sub)
                 return timestamp
 
             cnt = 0
@@ -692,6 +693,7 @@ class QcloudHubProvider(object):
                 time.sleep(0.2)
                 cnt += 1
 
+        self.unsubscribe(sys_topic_sub)
         return timestamp
 
     def connect(self):
