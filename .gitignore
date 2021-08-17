@@ -7,3 +7,4 @@ samples/
 build.sh
 TIoTExploreSDK.egg-info/
 *.pyc
+logs/log

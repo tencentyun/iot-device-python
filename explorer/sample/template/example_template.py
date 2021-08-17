@@ -287,8 +287,8 @@ def example_template():
 
     """template exit"""
     qcloud.templateDeinit(product_id, device_name)
-    qcloud.disconnect()
+    # qcloud.disconnect()
 
     logger.debug("\033[1;36m template test success...\033[0m")
     return True
-example_template()
+# example_template()
