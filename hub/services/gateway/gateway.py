@@ -109,7 +109,7 @@ class Gateway(object):
                         else:
                             break
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
             return 1
         elif session == "offline":
@@ -123,7 +123,7 @@ class Gateway(object):
                         else:
                             break
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
             return 1
         elif session == "bind":
@@ -137,7 +137,7 @@ class Gateway(object):
                         else:
                             break
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
             return 1
         elif session == "unbind":
@@ -151,7 +151,7 @@ class Gateway(object):
                         else:
                             break
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
             return 1
         elif session == "describe_sub_devices":
@@ -160,7 +160,7 @@ class Gateway(object):
                 if self.__gateway_get_bind_list_reply is True:
                     return 0
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
             return 1
         pass
