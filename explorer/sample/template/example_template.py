@@ -280,6 +280,7 @@ def example_template():
         logger.error("wait for report event reply timeout")
         return False
 
+    # 阻塞测试控制台下发属性是否生效
     # while True:
     #     time.sleep(3)
     """clear control"""
