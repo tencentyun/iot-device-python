@@ -58,7 +58,7 @@ def wait_for_reply():
         if reply is True:
             reply = False
             return 0
-        time.sleep(0.2)
+        time.sleep(0.5)
         cnt += 1
     return -1
 

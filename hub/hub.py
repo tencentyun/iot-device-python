@@ -690,7 +690,7 @@ class QcloudHubProvider(object):
                                     self.__ntptime._ntp_recv_timestamp - self.__ntptime._ntp_send_timestamp) / 2
                     break
                 pass
-                time.sleep(0.2)
+                time.sleep(0.5)
                 cnt += 1
 
         self.unsubscribe(sys_topic_sub)
