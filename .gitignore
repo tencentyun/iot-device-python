@@ -5,6 +5,6 @@ dist/
 test_env/
 samples/
 build.sh
-TIoTExploreSDK.egg-info/
+*.egg-info/
 *.pyc
 logs/log
