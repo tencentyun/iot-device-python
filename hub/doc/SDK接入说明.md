@@ -7,7 +7,7 @@
 -  Install from pip
 
     ```
-	pip install TIotHubSDK
+	pip install tencent-iot-device
 	```
 
 
