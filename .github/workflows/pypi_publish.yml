@@ -56,7 +56,7 @@ jobs:
         VERSION=$(git describe --tags `git rev-list --tags --max-count=1`)
         echo $VERSION
         rm -rf dist/
-#        sed -i "s#resp = urllib.request.*#resp = urllib.request.urlopen(f\'https://pypi.org/pypi/{name}/json\')#g" setup.py
+        sed -i "s#resp = urllib.request.*#resp = urllib.request.urlopen(f\'https://pypi.org/pypi/{name}/json\')#g" setup.py
         sed -i "s#version=.*#version=\"$VERSION\",#g" setup.py
         python setup.py sdist bdist_wheel
         twine upload dist/*
