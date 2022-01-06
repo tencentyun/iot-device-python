@@ -1,3 +1,5 @@
+简体中文 | [English](doc/en)   
+
 * [腾讯云物联网开发平台设备端 IoT Explorer Python-SDK](#腾讯云物联网开发平台设备端-IoT-Explorer-Python-SDK)
   * [前提条件](#前提条件)
   * [工程配置](#工程配置)
