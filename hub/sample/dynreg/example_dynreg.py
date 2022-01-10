@@ -83,3 +83,11 @@ def example_dynreg():
 
     # qcloud.disconnect()
     return True
+
+def example_device_report_with_http(topicName,signType,payload,qos):
+    ret, msg = qcloud.publishDevice(topicName,signType,payload,qos)
+    if ret == 0:
+        print("http device report success")
+    else:
+        print("http device report fail, msg: {}".format(msg))
+        return False
