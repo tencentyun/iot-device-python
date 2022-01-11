@@ -14,8 +14,8 @@
 import string
 import json
 import threading
-from hub.log.log import Log
-from hub.protocol.protocol import AsyncConnClient
+from log.log import Log
+from protocol.protocol import AsyncConnClient
 
 class SingletonType(type):
     _instance_lock = threading.Lock()

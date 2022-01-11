@@ -1,7 +1,7 @@
 import sys
 import logging
 import time
-from hub.hub import QcloudHub
+from hubFunction import QcloudHub
 
 provider = QcloudHub(device_file="hub/sample/scenarized/door_device_info.json", tls=True)
 qcloud = provider.hub

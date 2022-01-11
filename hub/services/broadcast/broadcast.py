@@ -12,8 +12,8 @@
 # limitations under the License.
 
 import json
-from hub.utils.providers import ConnClientProvider
-from hub.utils.providers import TopicProvider
+from utils.providers import ConnClientProvider
+from utils.providers import TopicProvider
 
 class Broadcast(object):
     def __init__(self, host, product_id, device_name, device_secret,

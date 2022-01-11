@@ -22,7 +22,7 @@ import base64
 import random
 import ssl
 import paho.mqtt.client as mqtt
-from hub.utils.codec import Codec
+from utils.codec import Codec
 
 class AsyncConnClient(object):
 

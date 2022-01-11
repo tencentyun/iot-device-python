@@ -24,17 +24,17 @@ import urllib.parse
 import urllib.error
 from enum import Enum
 from enum import IntEnum
-from hub.utils.codec import Codec
-from hub.utils.providers import TopicProvider
-from hub.utils.providers import DeviceInfoProvider
-from hub.utils.providers import ConnClientProvider
-from hub.utils.providers import LoggerProvider
-from hub.manager.manager import TaskManager
-from hub.services.gateway.gateway import Gateway
-from hub.services.rrpc.rrpc import Rrpc
-from hub.services.broadcast.broadcast import Broadcast
-from hub.services.shadow.shadow import Shadow
-from hub.services.ota.ota import Ota
+from utils.codec import Codec
+from utils.providers import TopicProvider
+from utils.providers import DeviceInfoProvider
+from utils.providers import ConnClientProvider
+from utils.providers import LoggerProvider
+from manager.manager import TaskManager
+from services.gateway.gateway import Gateway
+from services.rrpc.rrpc import Rrpc
+from services.broadcast.broadcast import Broadcast
+from services.shadow.shadow import Shadow
+from services.ota.ota import Ota
 
 class SingletonType(type):
     _instance_lock = threading.Lock()
@@ -946,6 +946,41 @@ class QcloudHubProvider(object):
                 self._logger.error('code: {}, error message: {}'.format(
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
+            
+    def httpCallback(self, on_connect, on_disconnect,
+                            on_message, on_publish,
+                            on_subscribe, on_unsubscribe):
+        """Register user http callback
+
+        Register user http callback for http
+        Args:
+            on_connect: http connect callback
+            on_disconnect: http disconnect callback
+            on_message: http message callback
+            on_publish: http publish callback
+            on_subscribe: http subscribe callback
+            on_unsubscribe: http unsubscribe callback
+        Returns:
+            success: default
+            fail: default
+        """
+        self.__user_on_connect = on_connect
+        self.__user_on_disconnect = on_disconnect
+        self.__user_on_message = on_message
+        self.__user_on_publish = on_publish
+        self.__user_on_subscribe = on_subscribe
+        self.__user_on_unsubscribe = on_unsubscribe    
+    
+    def isHttpConnected(self):
+        """Is http connected
+
+        Is http connected
+        Args: None
+        Returns:
+            success: True/False
+        """
+        return self.__hub_state == self.HubState.CONNECTED    
+        
         
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
         """Sub-device status

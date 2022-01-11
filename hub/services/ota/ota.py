@@ -19,9 +19,9 @@ import urllib.error
 import hashlib
 from enum import Enum
 from enum import IntEnum
-from hub.utils.codec import Codec
-from hub.utils.providers import TopicProvider
-from hub.utils.providers import ConnClientProvider
+from utils.codec import Codec
+from utils.providers import TopicProvider
+from utils.providers import ConnClientProvider
 
 class Ota(object):
     def __init__(self, host, product_id, device_name, device_secret,

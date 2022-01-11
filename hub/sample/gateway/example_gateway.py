@@ -2,7 +2,7 @@ import sys
 import time
 import logging
 import threading
-from hub.hub import QcloudHub
+from hubFunction import QcloudHub
 from gateway import subdev_ota as SubdevOta
 
 provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)

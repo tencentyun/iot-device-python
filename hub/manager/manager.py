@@ -13,7 +13,7 @@
 
 import queue
 import threading
-from hub.utils.providers import LoggerProvider
+from utils.providers import LoggerProvider
 
 class TaskManager(object):
     def __init__(self):

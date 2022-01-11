@@ -4,7 +4,7 @@ import logging
 import json
 import os
 from enum import Enum
-from hub.hub import QcloudHub
+from hubFunction import QcloudHub
 
 g_report_res = False
 g_packet_id = 0

@@ -2,7 +2,7 @@ import sys
 import logging
 import time
 import json
-from hub.hub import QcloudHub
+from hubFunction import QcloudHub
 
 provider = QcloudHub(device_file="hub/sample/scenarized/aircond_device_info.json", tls=True)
 qcloud = provider.hub

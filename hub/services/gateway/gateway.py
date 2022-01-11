@@ -17,9 +17,9 @@ import time
 import json
 import random
 from enum import Enum
-from hub.utils.codec import Codec
-from hub.utils.providers import LoggerProvider
-from hub.utils.providers import ConnClientProvider
+from utils.codec import Codec
+from utils.providers import LoggerProvider
+from utils.providers import ConnClientProvider
 
 class Gateway(object):
     def __init__(self, host, product_id, device_name, device_secret,
