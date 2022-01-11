@@ -7,6 +7,7 @@ from ota import example_ota as otatest
 from broadcast import example_broadcast as broadcasttest
 from rrpc import example_rrpc as rrpctest
 from shadow import example_shadow as shadowtest
+from http import example_http as httptest
 
 class MyTestCase(unittest.TestCase):
 
@@ -32,6 +33,12 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(ret, True)
         pass
 
+    def test_http(self):
+        ret = httptest.example_http()
+        self.assertEqual(ret, True)
+        pass
+            
+        
     @unittest.skip("skipping")
     def test_ota(self):
         ret = otatest.example_ota()
