@@ -5,6 +5,7 @@ from gateway import example_gateway as gatewaytest
 from mqtt import example_mqtt as mqtttest
 from ota import example_ota as otatest
 from template import example_template as templatetest
+from httpAccess import example_http as httptest
 
 class MyTestCase(unittest.TestCase):
 
@@ -27,6 +28,11 @@ class MyTestCase(unittest.TestCase):
 
     def test_gateway(self):
         ret = gatewaytest.example_gateway()
+        self.assertEqual(ret, True)
+        pass
+
+    def test_http(self):
+        ret = httptest.example_http()
         self.assertEqual(ret, True)
         pass
 

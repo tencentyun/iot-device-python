@@ -692,7 +692,55 @@ class QcloudExplorer(object):
         """
         return self.__hub.dynregDevice(timeout)
 
-    # gateway
+    def publishDevice(self, topicName, signType, payload, qos, timeout=10):
+        """
+        http device report
+        :param topicName: topicname String
+        :param signType:  different sign type  0:HMAC 1:RSA
+        :param payload:   report json content string
+        :param qos:       qos level  0 or 1
+        :param timeout:   request timeout
+        :return:
+            success: return zero and device secret
+            fail: -1 and error message
+        """
+        return self.__hub.publishDevice(topicName,signType,payload,qos,timeout)
+
+    def httpCallback(self, on_connect, on_disconnect,
+                     on_message, on_publish,
+                     on_subscribe, on_unsubscribe):
+        """Register user http callback
+
+        Register user http callback for http
+        Args:
+            on_connect: http connect callback
+            on_disconnect: http disconnect callback
+            on_message: http message callback
+            on_publish: http publish callback
+            on_subscribe: http subscribe callback
+            on_unsubscribe: http unsubscribe callback
+        Returns:
+            success: default
+            fail: default
+        """
+        self.__user_on_connect = on_connect
+        self.__user_on_disconnect = on_disconnect
+        self.__user_on_message = on_message
+        self.__user_on_publish = on_publish
+        self.__user_on_subscribe = on_subscribe
+        self.__user_on_unsubscribe = on_unsubscribe
+
+    def isHttpConnected(self):
+        """Is http connected
+
+        Is http connected
+        Args: None
+        Returns:
+            success: True/False
+        """
+        return self.__hub.isHttpConnected()
+
+        # gateway
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
         """Sub-device status
 
