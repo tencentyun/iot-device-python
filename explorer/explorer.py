@@ -692,6 +692,20 @@ class QcloudExplorer(object):
         """
         return self.__hub.dynregDevice(timeout)
 
+    def publishDevice(self, topicName, signType, payload, qos, timeout=10):
+        """
+        http device report
+        :param topicName: topicname String
+        :param signType:  different sign type  0:HMAC 1:RSA
+        :param payload:   report json content string
+        :param qos:       qos level  0 or 1
+        :param timeout:   request timeout
+        :return:
+            success: return zero and device secret
+            fail: -1 and error message
+        """
+        return self.__hub.publishDevice(topicName,signType,payload,qos,timeout)
+
     # gateway
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
         """Sub-device status
