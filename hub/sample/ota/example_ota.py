@@ -12,9 +12,7 @@ g_pub_ack = False
 product_id = None
 device_name = None
 
-provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-qcloud = provider.hub
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
+logger = None
 
 class OtaContextData(object):
     def __init__(self):
@@ -210,6 +208,11 @@ def _board_upgrade(fw_path):
 
 
 def example_ota():
+    global logger
+    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+    qcloud = provider.hub
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
+
     logger.debug("\033[1;36m ota test start...\033[0m")
 
     global product_id
