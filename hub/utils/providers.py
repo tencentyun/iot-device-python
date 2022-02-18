@@ -180,6 +180,10 @@ class DeviceInfoProvider(object):
         self.__product_id = None
         self.__product_secret = None
         self.__device_secret = None
+        self.__webSocketMqttDomainHost = None
+        self.__otherMqttDomainHost = None
+        self.__httpDomainHost = None
+        self.__dynregRegistHost = None
         self.__ca_file = None
         self.__cert_file = None
         self.__private_key_file = None
@@ -192,6 +196,10 @@ class DeviceInfoProvider(object):
             self.__device_name = self.__json_data['deviceName']
             self.__product_id = self.__json_data['productId']
             self.__product_secret = self.__json_data['productSecret']
+            self.__webSocketMqttDomainHost = self.__json_data['webSocketMqttDomainHost']
+            self.__otherMqttDomainHost = self.__json_data['otherMqttDomainHost']
+            self.__httpDomainHost = self.__json_data['httpDomainHost']
+            self.__dynregRegistHost = self.__json_data['dynregRegistHost']
             self.__device_secret = self.__json_data['key_deviceinfo']['deviceSecret']
             self.__ca_file = self.__json_data['cert_deviceinfo']['devCaFile']
             self.__cert_file = self.__json_data['cert_deviceinfo']['devCertFile']
@@ -233,6 +241,22 @@ class DeviceInfoProvider(object):
     @property
     def device_secret(self):
         return self.__device_secret
+
+    @property
+    def webSocketMqttDomainHost(self):
+        return self.__webSocketMqttDomainHost
+
+    @property
+    def otherMqttDomainHost(self):
+        return self.__otherMqttDomainHost
+
+    @property
+    def httpDomainHost(self):
+        return self.__httpDomainHost
+
+    @property
+    def dynregRegistHost(self):
+        return self.__dynregRegistHost
 
     @property
     def ca_file(self):

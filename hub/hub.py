@@ -553,7 +553,8 @@ class QcloudHubProvider(object):
         ca = self.__device_info.ca_file
         cert = self.__device_info.cert_file
         key = self.__device_info.private_key_file
-
+        webSocketMqttDomainHost = self.__device_info.webSocketMqttDomainHost
+        otherMqttDomainHost = self.__device_info.otherMqttDomainHost
         """
         由于ConnClientProvider是单例模式,因此没有device secret不能创建protocol对象
         """
@@ -563,11 +564,11 @@ class QcloudHubProvider(object):
 
         if useWebsocket is False:
             if domain is None or domain == "":
-                self.__host = product_id + ".iotcloud.tencentdevices.com"
+                self.__host = product_id + "." + otherMqttDomainHost
             else:
                 self.__host = product_id + domain
         else:
-            self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            self.__host = product_id + "." + webSocketMqttDomainHost
 
         self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
                                                 websocket=useWebsocket, tls=self.__tls, logger=self._logger)
@@ -824,8 +825,11 @@ class QcloudHubProvider(object):
             success: return zero and device secret
             fail: -1 and error message
         """
+
+        dynregRegistHost = self.__device_info.dynregRegistHost
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
+        url_format = '%s://' + dynregRegistHost + '/device/register'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
 
         device_name = self.__device_info.device_name
@@ -838,7 +842,7 @@ class QcloudHubProvider(object):
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "POST", dynregRegistHost,
             "/device/register", "", "hmacsha256", timestamp,
             nonce, request_hash)
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
@@ -894,9 +898,11 @@ class QcloudHubProvider(object):
         Args:
             sineType ([int]): different sign type  0:HMAC 1:RSA 
         """
-        
+
+        httpDomainHost = self.__device_info.httpDomainHost
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/publish'
+        url_format = '%s://' + httpDomainHost + '/device/publish'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\",\"TopicName\":\"%s\",\"Payload\":\"%s\",\"Qos\":\"%s\"}"
         
         type = signType
@@ -906,14 +912,13 @@ class QcloudHubProvider(object):
         device_name = self.__device_info.device_name
         product_id = self.__device_info.product_id
         product_secret = self.__device_info.product_secret
-        
         request_text = request_format % (product_id, device_name,topicNameString,payloadString,qosLevel)
         request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
         
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "POST", httpDomainHost,
             "/device/publish", "", "hmacsha256", timestamp,
             nonce, request_hash)
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),

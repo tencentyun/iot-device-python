@@ -5,6 +5,11 @@
     "productSecret":"YOUR_PRODUCT_SECRET",
     "deviceName":"YOUR_DEVICE_NAME",
 
+    "webSocketMqttDomainHost":"ap-guangzhou.iothub.tencentdevices.com",
+    "otherMqttDomainHost":"iotcloud.tencentdevices.com",
+    "httpDomainHost":"ap-guangzhou.gateway.tencentdevices.com",
+    "dynregRegistHost":"ap-guangzhou.gateway.tencentdevices.com",
+
     "key_deviceinfo":{
         "deviceSecret":"YOUR_DEVICE_SECRET"
     },
