@@ -45,7 +45,6 @@ class QcloudExplorer(object):
         self.__useWebsocket = useWebsocket
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
-
         self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket)
         self.__hub = self.__provider.hub
         """
@@ -680,7 +679,7 @@ class QcloudExplorer(object):
         self.__template_map.pop(client)
         return rc, mid
 
-    def dynregDevice(self, timeout=10):
+    def dynregDevice(self, timeout=10,dynregDomain=None):
         """Dynamic register
 
         Get the device secret from the Cloud
@@ -690,7 +689,7 @@ class QcloudExplorer(object):
             success: return zero and device secret
             fail: -1 and error message
         """
-        return self.__hub.dynregDevice(timeout)
+        return self.__hub.dynregDevice(timeout, dynregDomain)
 
     # gateway
     def isSubdevStatusOnline(self, sub_productId, sub_devName):

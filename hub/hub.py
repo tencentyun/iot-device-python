@@ -22,6 +22,7 @@ import random
 import urllib.request
 import urllib.parse
 import urllib.error
+from urllib.parse import urlparse
 from enum import Enum
 from enum import IntEnum
 from hub.utils.codec import Codec
@@ -50,6 +51,7 @@ class QcloudHub(metaclass=SingletonType):
     使用单例模式构建,保证对象只有一份
     """
     def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
+
         self.hub = QcloudHubProvider(device_file, userdata=userdata, tls=tls, domain=domain, useWebsocket=useWebsocket)
 
     def __new__(cls, *args, **kwargs):
@@ -561,14 +563,22 @@ class QcloudHubProvider(object):
             self._logger.error("device secret invalid!")
             return
 
+        """
+        腾讯hub设备 海外版的domain需要按照官网格式拼接:product_id
+        客户自定制的私有化 domain 透传
+        """
         if useWebsocket is False:
             if domain is None or domain == "":
                 self.__host = product_id + ".iotcloud.tencentdevices.com"
-            else:
-                self.__host = product_id + domain
         else:
-            self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            if domain is None or domain == "":
+                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
 
+        if not (domain is None or domain == ""):
+            self.__host = domain
+
+        print("------>domain:", domain)
+        print("------>__host:", self.__host)
         self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
                                                 websocket=useWebsocket, tls=self.__tls, logger=self._logger)
         self.__protocol = self.__provider.protocol
@@ -814,7 +824,7 @@ class QcloudHubProvider(object):
 
         return self.__protocol.publish(topic, json.dumps(payload), qos)
     
-    def dynregDevice(self, timeout=10):
+    def dynregDevice(self, timeout=10, dynregDomain=None):
         """Dynamic register
 
         Get the device secret from the Cloud
@@ -824,8 +834,8 @@ class QcloudHubProvider(object):
             success: return zero and device secret
             fail: -1 and error message
         """
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
 
         device_name = self.__device_info.device_name
@@ -837,10 +847,29 @@ class QcloudHubProvider(object):
 
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
-        sign_content = sign_format % (
+
+        """
+         默认domain为国内
+         腾讯hub设备 海外版的domain需要按照官网格式拼接
+         客户自定制的私有化 domain 透传
+        """
+        if dynregDomain is None or dynregDomain == "":
+            dynregHost = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
+            dynregSignContent = sign_format % (
             "POST", "ap-guangzhou.gateway.tencentdevices.com",
             "/device/register", "", "hmacsha256", timestamp,
             nonce, request_hash)
+        else:
+            dynregHost = dynregDomain
+            parsed = urlparse(dynregDomain)
+            dynregSignContent = sign_format % (
+            "POST", parsed.hostname,
+            parsed.path, "", "hmacsha256", timestamp,
+            nonce, request_hash)
+
+        url_format = dynregHost
+
+        sign_content = dynregSignContent
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
 
@@ -854,11 +883,15 @@ class QcloudHubProvider(object):
         data = bytes(request_text, encoding='utf-8')
 
         context = None
-        if self.__tls:
-            request_url = url_format % 'https'
-            context = self.__codec.Ssl().create_content()
+        if dynregDomain is None or dynregDomain == "":
+            if self.__tls:
+                request_url = url_format % 'https'
+                context = self.__codec.Ssl().create_content()
+            else:
+                request_url = url_format % 'http'
         else:
-            request_url = url_format % 'http'
+            request_url = dynregDomain
+
         self._logger.info('dynreg url {}'.format(request_url))
         req = urllib.request.Request(request_url, data=data, headers=header)
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
@@ -888,15 +921,20 @@ class QcloudHubProvider(object):
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
 
-    def publishDevice(self,topicName,signType,payload,qos,timeout=10):
+    def publishDevice(self,topicName,signType,payload,qos,timeout=10,httpDomain=None):
         """http device report
 
         Args:
             sineType ([int]): different sign type  0:HMAC 1:RSA 
         """
-        
+
+        if httpDomain is None or httpDomain == "":
+            httpHost = "ap-guangzhou.gateway.tencentdevices.com"
+        else:
+            httpHost = httpDomain
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/publish'
+        url_format = '%s://' + httpHost + '/device/publish'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\",\"TopicName\":\"%s\",\"Payload\":\"%s\",\"Qos\":\"%s\"}"
         
         type = signType
@@ -913,7 +951,7 @@ class QcloudHubProvider(object):
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "POST", httpHost,
             "/device/publish", "", "hmacsha256", timestamp,
             nonce, request_hash)
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),

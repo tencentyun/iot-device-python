@@ -2,8 +2,7 @@ import sys
 import time
 from explorer.explorer import QcloudExplorer
 
-qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
+logger = None
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -36,6 +35,10 @@ def on_unsubscribe(mid, userdata):
 
 
 def example_mqtt():
+    global logger
+    qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
+
     logger.debug("\033[1;36m mqtt test start...\033[0m")
 
     qcloud.registerMqttCallback(on_connect, on_disconnect,

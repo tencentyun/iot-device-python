@@ -3,8 +3,6 @@ import time
 import logging
 from hub.hub import QcloudHub
 
-provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-qcloud = provider.hub
 logger = None
 
 def on_connect(flags, rc, userdata):
@@ -43,6 +41,10 @@ def on_unsubscribe(mid, userdata):
     pass
 
 def example_dynreg():
+    global logger
+    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+    qcloud = provider.hub
+
     print("\033[1;36m dynamic register test start...\033[0m")
 
     """
