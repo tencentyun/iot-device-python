@@ -4,9 +4,8 @@ import time
 import json
 from hub.hub import QcloudHub
 
-provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-qcloud = provider.hub
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
+
+logger = None
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -39,6 +38,10 @@ def on_broadcast_cb(topic, qos, payload, userdata):
 
 def example_broadcast(isTest=True):
     logger.debug("\033[1;36m broadcast test start...\033[0m")
+
+    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+    qcloud = provider.hub
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
 
     prduct_id = qcloud.getProductID()
     device_name = qcloud.getDeviceName()
