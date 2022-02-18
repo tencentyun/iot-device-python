@@ -36,17 +36,18 @@ from explorer.services.template.template import Template
 
 class QcloudExplorer(object):
 
-    def __init__(self, device_file, tls=True, userdata=None, domain=None, useWebsocket=False):
+    def __init__(self, device_file, tls=True, userdata=None, domain=None, useWebsocket=False, otherMQTTDomain=None):
         self.__device_file = device_file
         self.__tls = tls
         """ 用户传参 """
         self.__userdata = userdata
         self.__domain = domain
+        self.__otherMQTTDomain = otherMQTTDomain
         self.__useWebsocket = useWebsocket
         """ 存放用户注册的回调函数 """
         self.__user_callback = {}
 
-        self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket)
+        self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket, otherMQTTDomain)
         self.__hub = self.__provider.hub
         """
         向hub注册mqtt disconnect回调
@@ -608,7 +609,7 @@ class QcloudExplorer(object):
         """
         client = productId + deviceName
         template = Template(self.__device_file, self.__tls, productId, deviceName,
-                                self.__userdata, self.__domain, self.__useWebsocket, self.__logger)
+                                self.__userdata, self.__domain, self.__useWebsocket, self.__logger, self.__otherMQTTDomain)
 
         """
         注册用户数据模板topic(property/action/event)对应回调
