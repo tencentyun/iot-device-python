@@ -17,11 +17,11 @@ from hub.hub import QcloudHub
 from hub.utils.providers import TopicProvider
 
 class Template(object):
-    def __init__(self, device_file, tls, productId, deviceName, userdata=None, domain=None, useWebsocket=False, logger=None):
+    def __init__(self, device_file, tls, productId, deviceName, userdata=None, domain=None, useWebsocket=False, logger=None, otherMQTTDomain=None):
         self.__logger = logger
         # self.__provider = Providers(device_file, tls)
         # self.__hub = self.__provider.hub
-        self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket)
+        self.__provider = QcloudHub(device_file, userdata, tls, domain, useWebsocket, otherMQTTDomain)
         self.__hub = self.__provider.hub
 
         self.__topic = TopicProvider(productId, deviceName)

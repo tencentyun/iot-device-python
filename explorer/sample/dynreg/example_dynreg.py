@@ -3,7 +3,7 @@ import time
 import logging
 from explorer.explorer import QcloudExplorer
 
-qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
+
 logger = None
 
 def on_connect(flags, rc, userdata):
@@ -42,6 +42,7 @@ def on_unsubscribe(mid, userdata):
     pass
 
 def example_dynreg():
+    qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
     print("\033[1;36m dynreg test start...\033[0m")
 
     """

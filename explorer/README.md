@@ -6,6 +6,7 @@
   * [下载IoT Explorer Python-SDK Demo示例代码](#下载IoT-Explorer-Python-SDK-Demo示例代码)
   * [功能文档](#功能文档)
   * [SDK API 说明](#SDK-API-说明)
+  * [常见问题](#常见问题)
 
 # 腾讯云物联网开发平台设备端 IoT Explorer Python-SDK
 欢迎使用腾讯云物联网开发平台设备端 IoT Explorer Python-SDK 。

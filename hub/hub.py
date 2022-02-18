@@ -49,8 +49,9 @@ class QcloudHub(metaclass=SingletonType):
     """
     使用单例模式构建,保证对象只有一份
     """
-    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
-        self.hub = QcloudHubProvider(device_file, userdata=userdata, tls=tls, domain=domain, useWebsocket=useWebsocket)
+    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False, otherMQTTDomain=None):
+
+        self.hub = QcloudHubProvider(device_file, userdata=userdata, tls=tls, domain=domain, useWebsocket=useWebsocket, otherMQTTDomain=otherMQTTDomain)
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)
@@ -59,7 +60,7 @@ class QcloudHubProvider(object):
     """事件核心处理层
     作为explorer/user层与协议层的中间层,负责上下层通道建立、消息分发等事物
     """
-    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False):
+    def __init__(self, device_file, userdata=None, tls=True, domain=None, useWebsocket=False, otherMQTTDomain=None):
         self.__tls = tls
         self.__useWebsocket = useWebsocket
         self.__key_mode = True
@@ -67,6 +68,7 @@ class QcloudHubProvider(object):
         self.__provider = None
         self.__protocol = None
         self.__domain = domain
+        self.__otherMQTTDomain = otherMQTTDomain
         self.__host = ""
         self.__log_provider = LoggerProvider()
         self._logger = self.__log_provider.logger
@@ -119,7 +121,7 @@ class QcloudHubProvider(object):
         self.__user_on_unsubscribe = None
         self.__user_on_message = None
 
-        self.__protocol_init(domain, useWebsocket)
+        self.__protocol_init(domain, useWebsocket, otherMQTTDomain)
 
     class HubState(Enum):
         """ 连接状态 """
@@ -542,10 +544,10 @@ class QcloudHubProvider(object):
         pass
 
     def __protocol_reinit(self):
-        self.__protocol_init(self.__domain, self.__useWebsocket)
+        self.__protocol_init(self.__domain, self.__useWebsocket, self.__otherMQTTDomain)
 
     # 连接协议(mqtt/websocket)初始化
-    def __protocol_init(self, domain=None, useWebsocket=False):
+    def __protocol_init(self, domain=None, useWebsocket=False, otherMQttDomain=None):
         auth_mode = self.__device_info.auth_mode
         device_name = self.__device_info.device_name
         product_id = self.__device_info.product_id
@@ -565,9 +567,12 @@ class QcloudHubProvider(object):
             if domain is None or domain == "":
                 self.__host = product_id + ".iotcloud.tencentdevices.com"
             else:
-                self.__host = product_id + domain
+                self.__host = product_id + "." + domain
         else:
-            self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            if otherMQttDomain is None or otherMQttDomain == "":
+                self.__host = product_id + ".ap-guangzhou.iothub.tencentdevices.com"
+            else:
+                self.__host = product_id + "." + otherMQttDomain
 
         self.__provider = ConnClientProvider(self.__host, product_id, device_name, device_secret,
                                                 websocket=useWebsocket, tls=self.__tls, logger=self._logger)
@@ -814,7 +819,7 @@ class QcloudHubProvider(object):
 
         return self.__protocol.publish(topic, json.dumps(payload), qos)
     
-    def dynregDevice(self, timeout=10):
+    def dynregDevice(self, timeout=10, dynregDomain=None):
         """Dynamic register
 
         Get the device secret from the Cloud
@@ -824,8 +829,14 @@ class QcloudHubProvider(object):
             success: return zero and device secret
             fail: -1 and error message
         """
+
+        if dynregDomain is None or dynregDomain == "":
+            dynregHost = "ap-guangzhou.gateway.tencentdevices.com"
+        else:
+            dynregHost = dynregDomain
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
+        url_format = '%s://' + dynregHost + '/device/register'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\"}"
 
         device_name = self.__device_info.device_name
@@ -838,7 +849,7 @@ class QcloudHubProvider(object):
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "POST", dynregHost,
             "/device/register", "", "hmacsha256", timestamp,
             nonce, request_hash)
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
@@ -888,15 +899,20 @@ class QcloudHubProvider(object):
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
 
-    def publishDevice(self,topicName,signType,payload,qos,timeout=10):
+    def publishDevice(self,topicName,signType,payload,qos,timeout=10,httpDomain=None):
         """http device report
 
         Args:
             sineType ([int]): different sign type  0:HMAC 1:RSA 
         """
-        
+
+        if httpDomain is None or httpDomain == "":
+            httpHost = "ap-guangzhou.gateway.tencentdevices.com"
+        else:
+            httpHost = httpDomain
+
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://ap-guangzhou.gateway.tencentdevices.com/device/publish'
+        url_format = '%s://' + httpHost + '/device/publish'
         request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\",\"TopicName\":\"%s\",\"Payload\":\"%s\",\"Qos\":\"%s\"}"
         
         type = signType
@@ -913,7 +929,7 @@ class QcloudHubProvider(object):
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         sign_content = sign_format % (
-            "POST", "ap-guangzhou.gateway.tencentdevices.com",
+            "POST", httpHost,
             "/device/publish", "", "hmacsha256", timestamp,
             nonce, request_hash)
         sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
