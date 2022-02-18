@@ -8,9 +8,7 @@ g_connected = False
 g_delta_arrived = False
 reply = False
 
-provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-qcloud = provider.hub
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
+logger = None
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -63,6 +61,10 @@ def wait_for_reply():
     return -1
 
 def example_shadow(isTest=True):
+    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+    qcloud = provider.hub
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
+
     logger.debug("\033[1;36m shadow test start...\033[0m")
 
     prduct_id = qcloud.getProductID()
