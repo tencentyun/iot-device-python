@@ -8,9 +8,7 @@ prduct_id = None
 device_name = None
 rrpc_reply = False
 
-provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-qcloud = provider.hub
-logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024*1024*10, 5, enable=True)
+logger = None
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -47,6 +45,11 @@ def on_rrpc_cb(topic, qos, payload, userdata):
     pass
 
 def example_rrpc(isTest=True):
+    global logger
+    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+    qcloud = provider.hub
+    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
+
     logger.debug("\033[1;36m rrpc test start...\033[0m")
 
     global prduct_id
