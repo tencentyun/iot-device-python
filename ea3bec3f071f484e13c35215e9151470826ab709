@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7918fc9d_0d589259",
+        "filename": "explorer/sample/device_info.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-22T06:40:56Z",
+      "side": 1,
+      "message": "device.json时配置设备信息，与host无关，建议新增接口，或接口参数方式设置brokeurl",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2a5078b_b4a40462",
+        "filename": "hub/hub.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 829,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-22T06:40:56Z",
+      "side": 1,
+      "message": "可以给dynregDevice 添加host参数，带默认值",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d32d04d4_1092a6de",
+        "filename": "hub/sample/device_info.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-22T06:40:56Z",
+      "side": 1,
+      "message": "同上",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
