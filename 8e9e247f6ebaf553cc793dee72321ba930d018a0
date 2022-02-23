@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "23a911cd_430760fe",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-23T08:14:18Z",
+      "side": 1,
+      "message": "私有化部署可以直接使用domain付给host",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23bdbf2e_cc64aff7",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-23T08:14:18Z",
+      "side": 1,
+      "message": "建议和java保持一致，将整个url开放出来",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2820ccfe_8e6b8df2",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-02-23T08:14:18Z",
+      "side": 1,
+      "message": "签名支持domain",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
