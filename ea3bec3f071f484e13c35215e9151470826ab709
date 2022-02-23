@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b87a4784_4cb1408a",
+        "filename": "explorer/sample/device_info.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-23T07:18:57Z",
+      "side": 1,
+      "message": "已在最新patch中修改，提供参数传入，默认为国内",
+      "parentUuid": "7918fc9d_0d589259",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e2a5078b_b4a40462",
         "filename": "hub/hub.py",
         "patchSetId": 3
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "6f27dd02_6acf62a3",
+        "filename": "hub/hub.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 829,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-23T07:18:57Z",
+      "side": 1,
+      "message": "已修改",
+      "parentUuid": "e2a5078b_b4a40462",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d32d04d4_1092a6de",
         "filename": "hub/sample/device_info.json",
         "patchSetId": 3
@@ -50,6 +86,24 @@
       "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
       "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8c52acc_3cbd081a",
+        "filename": "hub/sample/device_info.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-23T07:18:57Z",
+      "side": 1,
+      "message": "已修改",
+      "parentUuid": "d32d04d4_1092a6de",
+      "revId": "ea3bec3f071f484e13c35215e9151470826ab709",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
     }
   ]
 }
