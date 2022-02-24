@@ -40,8 +40,10 @@ def example_broadcast(isTest=True):
     global logger
     provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
     qcloud = provider.hub
-    logger.debug("\033[1;36m broadcast test start...\033[0m")
     logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
+    
+    logger.debug("\033[1;36m broadcast test start...\033[0m")
+
 
     prduct_id = qcloud.getProductID()
     device_name = qcloud.getDeviceName()
