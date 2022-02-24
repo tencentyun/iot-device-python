@@ -5,7 +5,9 @@ import threading
 from hub.hub import QcloudHub
 from gateway import subdev_ota as SubdevOta
 
-logger = None
+provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
+qcloud = provider.hub
+logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
 
 subdev_map = {}
 thread_list = []
@@ -88,10 +90,6 @@ def publish_subdev_message(product_id, device_name, topic_suffix):
     qcloud.publish(topic_data, message, 1)
 
 def example_gateway(isTest=True):
-    global logger
-    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-    qcloud = provider.hub
-    logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
 
     logger.debug("\033[1;36m gateway test start...\033[0m")
 
