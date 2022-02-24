@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "df6d4544_11df9587",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-24T08:21:04Z",
+      "side": 1,
+      "message": "好的，已在最新patch中修改",
+      "parentUuid": "23a911cd_430760fe",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "23bdbf2e_cc64aff7",
         "filename": "hub/hub.py",
         "patchSetId": 7
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "7c51f713_3a4dc843",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 833,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-24T08:21:04Z",
+      "side": 1,
+      "message": "已和Java保持统一，用一个参数控制URL",
+      "parentUuid": "23bdbf2e_cc64aff7",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2820ccfe_8e6b8df2",
         "filename": "hub/hub.py",
         "patchSetId": 7
@@ -50,6 +86,24 @@
       "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
       "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23cdf863_268c45f9",
+        "filename": "hub/hub.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2022-02-24T08:21:04Z",
+      "side": 1,
+      "message": "这里的签名可以用变量传入，可以根据私有化做区分",
+      "parentUuid": "2820ccfe_8e6b8df2",
+      "revId": "8e9e247f6ebaf553cc793dee72321ba930d018a0",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": false
     }
   ]
 }
