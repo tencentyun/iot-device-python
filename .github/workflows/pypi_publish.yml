@@ -7,6 +7,9 @@ on:
       - '**.md'
       - 'LICENSE'
 
+env:
+  IOT_WECOM_CID_ROBOT_KEY: ${{ secrets.IOT_WECOM_CID_ROBOT_KEY }}
+
 jobs:
 
   build:
@@ -60,3 +63,13 @@ jobs:
         sed -i "s#version=.*#version=\"$VERSION\",#g" setup.py
         python setup.py sdist bdist_wheel
         twine upload dist/*
+    - name: Report success result to wecom
+        if: ${{ success() }}
+        run: |
+          echo success!!!
+          bash .github/scripts/send_result_to_wecom.sh ${{ github.event.repository.name }} success
+    - name: Report fail result to wecom
+        if: ${{ failure() }}
+        run: |
+          echo fail!!!
+          bash .github/scripts/send_result_to_wecom.sh ${{ github.event.repository.name }} fail
