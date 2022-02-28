@@ -921,40 +921,48 @@ class QcloudHubProvider(object):
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
 
-    def publishDevice(self,topicName,signType,payload,qos,timeout=10,httpDomain=None):
+    def publishDevice(self,topicName=None,payload='test',qos=0,timeout=10,httpDomain=None):
         """http device report
 
         Args:
-            sineType ([int]): different sign type  0:HMAC 1:RSA 
+             payload: 发布消息的内容，string类型
+             topicName：发布消息的 Topic 名称
+             httpDomain：默认domain为国内，腾讯hub设备 海外版的domain需要按照官网格式拼接，客户自定制的私有化 domain 透传
         """
-
-        if httpDomain is None or httpDomain == "":
-            httpHost = "ap-guangzhou.gateway.tencentdevices.com"
-        else:
-            httpHost = httpDomain
-
         sign_format = '%s\n%s\n%s\n%s\n%s\n%d\n%d\n%s'
-        url_format = '%s://' + httpHost + '/device/publish'
-        request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\",\"TopicName\":\"%s\",\"Payload\":\"%s\",\"Qos\":\"%s\"}"
-        
-        type = signType
-        topicNameString = topicName
+        request_format = "{\"ProductId\":\"%s\",\"DeviceName\":\"%s\",\"TopicName\":\"%s\",\"Payload\":\"%s\",\"Qos\":%d}"
+
         qosLevel = qos
         payloadString = payload
         device_name = self.__device_info.device_name
         product_id = self.__device_info.product_id
-        product_secret = self.__device_info.product_secret
-        
-        request_text = request_format % (product_id, device_name,topicNameString,payloadString,qosLevel)
-        request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
-        
+        device_secret = self.__device_info.device_secret
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
-        sign_content = sign_format % (
-            "POST", httpHost,
-            "/device/publish", "", "hmacsha256", timestamp,
-            nonce, request_hash)
-        sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
+        if topicName is None or topicName == "":
+            topicName = product_id + '/' + device_name + '/data'
+
+        request_text = request_format % (product_id, device_name, topicName, payloadString, qosLevel)
+
+        request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
+        self._logger.info("request_text:%s",request_text)
+        if httpDomain is None or httpDomain == "":
+            httpHost = '%s://' + 'ap-guangzhou.gateway.tencentdevices.com' + '/device/publish'
+            sign_content = sign_format % (
+                "POST", "ap-guangzhou.gateway.tencentdevices.com",
+                "/device/publish", "", "hmacsha256", timestamp,
+                nonce, request_hash)
+        else:
+            httpHost = httpDomain
+            parsed = urlparse(dynregDomain)
+            sign_content = sign_format % (
+                "POST", parsed.hostname,
+                parsed.path, "", "hmacsha256", timestamp,
+                nonce, request_hash)
+
+        url_format = httpHost
+
+        sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(device_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
 
         header = {
@@ -967,24 +975,34 @@ class QcloudHubProvider(object):
         data = bytes(request_text, encoding='utf-8')
         
         context = None
-        if self.__tls:
-            request_url = url_format % 'https'
-            context = self.__codec.Ssl().create_content()
+
+        if httpDomain is None or httpDomain == "":
+            if self.__tls:
+                request_url = url_format % 'https'
+                context = self.__codec.Ssl().create_content()
+            else:
+                request_url = url_format % 'http'
         else:
-            request_url = url_format % 'http'
-        self._logger.info('dynreg url {}'.format(request_url))
+            request_url = httpDomain
+            if self.__tls:
+                context = self.__codec.Ssl().create_content()
+
+        self._logger.info('http request url: {}'.format(request_url))
         req = urllib.request.Request(request_url, data=data, headers=header)
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
             resp = reply_obj['Response']
-            
-            if not resp['Error'] :
+            self._logger.info("resp:%s",resp)
+
+            if 'Error' in resp and resp['Error']:
                 err_code = resp['Error']
                 self._logger.error('code: {}, error message: {}'.format(
                     err_code, err_code['Message']))
                 return -1, err_code['Message']
-            
+            else:
+                return 0, resp
+
     def httpCallback(self, on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe):

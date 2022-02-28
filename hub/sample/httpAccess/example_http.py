@@ -35,12 +35,26 @@ def on_unsubscribe(mid, userdata):
     pass
 
 def example_http():
+    global logger
     provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
     qcloud = provider.hub
     logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
 
     logger.debug("\033[1;36m http test start...\033[0m")
 
+    """
+        start http request send 
+    """
+    ret, msg = qcloud.publishDevice()
+    if ret == 0:
+        print("http request test success")
+    else:
+        print("\033[1;31m http request test fail, msg: {}\033[0m".format(msg))
+        return False
+
+    """
+        start mqtt connect
+    """
     qcloud.httpCallback(on_connect, on_disconnect,
                             on_message, on_publish,
                             on_subscribe, on_unsubscribe)
