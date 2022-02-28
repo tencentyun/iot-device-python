@@ -1,7 +1,7 @@
 import sys
-import logging
 import time
-from hub.hub import QcloudHub
+import logging
+from explorer.explorer import QcloudExplorer
 
 logger = None
 
@@ -35,15 +35,15 @@ def on_unsubscribe(mid, userdata):
     pass
 
 def example_http():
+
     global logger
-    provider = QcloudHub(device_file="hub/sample/device_info.json", tls=True)
-    qcloud = provider.hub
+    qcloud = QcloudExplorer(device_file="explorer/sample/device_info.json", tls=True)
     logger = qcloud.logInit(qcloud.LoggerLevel.DEBUG, "logs/log", 1024 * 1024 * 10, 5, enable=True)
 
     logger.debug("\033[1;36m http test start...\033[0m")
 
     """
-        start http request send 
+            start http request send 
     """
     ret, msg = qcloud.httpDevice()
     if ret == 0:
@@ -52,17 +52,15 @@ def example_http():
         print("\033[1;31m http request test fail, msg: {}\033[0m".format(msg))
         return False
 
-    """
-        start mqtt connect
-    """
-    qcloud.httpCallback(on_connect, on_disconnect,
-                            on_message, on_publish,
-                            on_subscribe, on_unsubscribe)
+
+    qcloud.registerMqttCallback(on_connect, on_disconnect,
+                                on_message, on_publish,
+                                on_subscribe, on_unsubscribe)
     qcloud.connect()
 
     count = 0
     while True:
-        if qcloud.isHttpConnected():
+        if qcloud.isMqttConnected():
             break
         else:
             if count >= 3:
@@ -72,7 +70,7 @@ def example_http():
             count += 1
 
     timestamp = qcloud.getNtpAccurateTime()
-    dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp/1000))
+    dt = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp / 1000))
     logger.debug("current time:%s" % dt)
 
     # qcloud.disconnect()

@@ -691,6 +691,20 @@ class QcloudExplorer(object):
         """
         return self.__hub.dynregDevice(timeout, dynregDomain)
 
+    def httpDevice(self,topicName=None,payload=None,qos=0,timeout=10,httpDomain=None):
+        """
+        设备基于 HTTP 接入
+        :param topicName: 发布消息的 Topic 名称
+        :param payload:发布消息的内容
+        :param qos:消息 Qos 等级
+        :param timeout:超时时间
+        :param httpDomain: 域名，默认为国内，私有化和海外设备需要传入
+        :return:
+                success: return zero and device secret
+                fail: -1 and error message
+        """
+        return self.__hub.httpDevice(topicName,payload,qos,timeout,httpDomain)
+
     # gateway
     def isSubdevStatusOnline(self, sub_productId, sub_devName):
         """Sub-device status
