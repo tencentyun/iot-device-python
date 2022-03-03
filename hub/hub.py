@@ -940,6 +940,7 @@ class QcloudHubProvider(object):
         device_name = self.__device_info.device_name
         product_id = self.__device_info.product_id
         device_secret = self.__device_info.device_secret
+        auth_mode = self.__device_info.auth_mode
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
         if topicName is None or topicName == "":
@@ -947,30 +948,49 @@ class QcloudHubProvider(object):
 
         request_text = request_format % (product_id, device_name, topicName, payloadString, qosLevel)
 
+
+        if not (auth_mode == "CERT"):
+            #密钥认证
+            encodeType = "hmacsha256"
+        else:
+            #证书认证
+            encodeType = "rsa-sha256"
+
+
         request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
         self._logger.info("request_text:%s",request_text)
         if httpDomain is None or httpDomain == "":
             httpHost = '%s://' + 'ap-guangzhou.gateway.tencentdevices.com' + '/device/publish'
             sign_content = sign_format % (
                 "POST", "ap-guangzhou.gateway.tencentdevices.com",
-                "/device/publish", "", "hmacsha256", timestamp,
+                "/device/publish", "", encodeType, timestamp,
                 nonce, request_hash)
         else:
             httpHost = httpDomain
             parsed = urlparse(httpDomain)
             sign_content = sign_format % (
                 "POST", parsed.hostname,
-                parsed.path, "", "hmacsha256", timestamp,
+                parsed.path, "", encodeType, timestamp,
                 nonce, request_hash)
 
         url_format = httpHost
 
-        sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(device_secret.encode("utf-8"),
+
+        if not (auth_mode == "CERT"):
+            #密钥认证后的签名
+            sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(device_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
+        else:
+            #证书认证后的签名
+            privateKeyFilePath = self.__device_info.private_key_file
+            file = open(privateKeyFilePath)
+            fileConent = file.read()
+            file.close()
+            sign_base64 = self.__codec.RSA.sha256_encode(fileConent, sign_content.encode('utf-8'))
 
         header = {
             'Content-Type': 'application/json; charset=utf-8',
-            "X-TC-Algorithm": "hmacsha256",
+            "X-TC-Algorithm": encodeType,
             "X-TC-Timestamp": timestamp,
             "X-TC-Nonce": nonce,
             "X-TC-Signature": sign_base64
@@ -1028,7 +1048,7 @@ class QcloudHubProvider(object):
         self.__user_on_message = on_message
         self.__user_on_publish = on_publish
         self.__user_on_subscribe = on_subscribe
-        self.__user_on_unsubscribe = on_unsubscribe    
+        self.__user_on_unsubscribe = on_unsubscribe
     
     def isHttpConnected(self):
         """Is http connected
