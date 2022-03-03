@@ -17,6 +17,11 @@ import ssl
 import base64
 from Crypto.Cipher import AES
 
+import Crypto.Signature.PKCS1_v1_5 as sign_PKCS1_v1_5 #用于签名/验签
+from Crypto.Cipher import PKCS1_v1_5 as Cipher_pkcs1_v1_5 #用于加密
+from Crypto import Hash
+from Crypto.PublicKey import RSA
+
 class Codec(object):
     def __init__(self):
         self.__init = None
@@ -50,6 +55,15 @@ class Codec(object):
         @staticmethod
         def sha256_encode(key, content):
             return hmac.new(key, content, hashlib.sha256).digest()
+    class RSA:
+        @staticmethod
+        def sha256_encode(key, content):
+            signer_pri_obj = sign_PKCS1_v1_5.new(RSA.importKey(key))
+            rand_hash = Hash.SHA256.new()
+            rand_hash.update(content)
+            signature = signer_pri_obj.sign(rand_hash)
+            sign_result = base64.b64encode(signature).decode('utf-8')
+            return sign_result
 
     class Hash:
         @staticmethod
