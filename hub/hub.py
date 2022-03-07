@@ -842,9 +842,17 @@ class QcloudHubProvider(object):
 
         request_text = request_format % (product_id, device_name)
         request_hash = self.__codec.Hash.sha256_encode(request_text.encode("utf-8"))
+        auth_mode = self.__device_info.auth_mode
 
         nonce = random.randrange(2147483647)
         timestamp = int(time.time())
+
+        if not (auth_mode == "CERT"):
+            #密钥认证
+            encodeType = "hmacsha256"
+        else:
+            #证书认证
+            encodeType = "rsa-sha256"
 
         """
          默认domain为国内
@@ -855,25 +863,37 @@ class QcloudHubProvider(object):
             dynregHost = '%s://ap-guangzhou.gateway.tencentdevices.com/device/register'
             dynregSignContent = sign_format % (
             "POST", "ap-guangzhou.gateway.tencentdevices.com",
-            "/device/register", "", "hmacsha256", timestamp,
+            "/device/register", "", encodeType, timestamp,
             nonce, request_hash)
         else:
             dynregHost = dynregDomain
             parsed = urlparse(dynregDomain)
             dynregSignContent = sign_format % (
             "POST", parsed.hostname,
-            parsed.path, "", "hmacsha256", timestamp,
+            parsed.path, "", encodeType, timestamp,
             nonce, request_hash)
 
         url_format = dynregHost
 
         sign_content = dynregSignContent
-        sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
+        # sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
+                            # sign_content.encode("utf-8")))
+        if not (auth_mode == "CERT"):
+            #密钥认证后的签名
+
+            sign_base64 = self.__codec.Base64.encode(self.__codec.Hmac.sha256_encode(product_secret.encode("utf-8"),
                             sign_content.encode("utf-8")))
+        else:
+            #证书认证后的签名
+            privateKeyFilePath = self.__device_info.private_key_file
+            file = open(privateKeyFilePath)
+            fileConent = file.read()
+            file.close()
+            sign_base64 = self.__codec.RSA.sha256_encode(fileConent, sign_content.encode('utf-8'))
 
         header = {
             'Content-Type': 'application/json; charset=utf-8',
-            "X-TC-Algorithm": "hmacsha256",
+            "X-TC-Algorithm": encodeType,
             "X-TC-Timestamp": timestamp,
             "X-TC-Nonce": nonce,
             "X-TC-Signature": sign_base64
