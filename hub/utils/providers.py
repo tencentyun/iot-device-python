@@ -214,6 +214,28 @@ class DeviceInfoProvider(object):
             self.__device_secret = psk
         pass
 
+    def update_cert_config_file(self, cert):
+        with open(self.__file_path, '+r', encoding='utf-8') as f:
+            t = f.read()
+            t = t.replace(self.__cert_file, cert)
+            f.seek(0, 0)
+            f.write(t)
+            f.truncate()
+
+        self.__cert_file = cert
+        pass
+
+    def update_privateKey_config_file(self, privateKey):
+        with open(self.__file_path, '+r', encoding='utf-8') as f:
+            t = f.read()
+            t = t.replace(self.__private_key_file, privateKey)
+            f.seek(0, 0)
+            f.write(t)
+            f.truncate()
+
+        self.__private_key_file = privateKey
+        pass
+
     @property
     def auth_mode(self):
         return self.__auth_mode
