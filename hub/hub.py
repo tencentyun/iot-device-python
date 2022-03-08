@@ -36,6 +36,7 @@ from hub.services.rrpc.rrpc import Rrpc
 from hub.services.broadcast.broadcast import Broadcast
 from hub.services.shadow.shadow import Shadow
 from hub.services.ota.ota import Ota
+import os
 
 class SingletonType(type):
     _instance_lock = threading.Lock()
@@ -901,17 +902,49 @@ class QcloudHubProvider(object):
             if 'Len' in resp and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
                 if reply_obj_data is not None:
-                    psk = self.__codec._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:self.__codec._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
+                    payload = self.__codec._AESUtil.decrypt(reply_obj_data.encode('UTF-8') , product_secret[:self.__codec._AESUtil.BLOCK_SIZE_16].encode('UTF-8'),
                                         '0000000000000000'.encode('UTF-8'))
-                    psk = psk.decode('UTF-8', 'ignore').strip().strip(b'\x00'.decode())
-                    user_dict = json.loads(psk)
+                    payload = payload.decode('UTF-8', 'ignore').strip().strip(b'\x00'.decode())
+                    user_dict = json.loads(payload)
                     self._logger.info('encrypt type: {}'.format(
                         user_dict['encryptionType']))
 
-                    self.__device_info.update_config_file(user_dict['psk'])
-                    self.__protocol_reinit()
+                    encryptionType = user_dict['encryptionType']
 
-                    return 0, user_dict['psk']
+                    if encryptionType is not None:
+                        if encryptionType == 2:  #2表示密钥认证
+                            self.__device_info.update_config_file(user_dict['psk'])
+                            self.__protocol_reinit()
+                            return 0, user_dict['psk']
+
+                        elif encryptionType == 1:  #1表示证书认证
+                            #获取证书和秘钥
+                            cert = user_dict['clientCert']
+                            privateKey = user_dict['clientKey']
+                            #cert文件创建路径
+                            current_path = os.getcwd()
+                            cert_file_path = os.path.join(current_path,'cert.txt')
+                            cert_file = open(cert_file_path,'w')
+                            cert_file.write(cert)
+                            cert_file.close()
+                            #privateKey文件创建路径
+                            privateKey_file_path = os.path.join(current_path,'privateKey.txt')
+                            privateKey_file = open(privateKey_file_path,'w')
+                            privateKey_file.write(privateKey)
+                            privateKey_file.close()
+
+                            #替换json文件对应路径
+                            self.__device_info.update_cert_config_file(cert_file_path)
+                            self.__device_info.update_privateKey_config_file(privateKey_file_path)
+                            self.__protocol_reinit()
+
+                            return 0, 'success'
+                        else:
+                            self._logger.warring('encryptionType is other type')
+                            return -1, 'encryptionType is other type'
+                    else:
+                        self._logger.warring('encryptionType is null')
+                        return -1, 'encryptionType is null'
                 else:
                     self._logger.warring('payload is null')
                     return -1, 'payload is null'
