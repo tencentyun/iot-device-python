@@ -36,6 +36,7 @@ from hub.services.rrpc.rrpc import Rrpc
 from hub.services.broadcast.broadcast import Broadcast
 from hub.services.shadow.shadow import Shadow
 from hub.services.ota.ota import Ota
+from hub.services.resourceManage.resourceManage import ResourceManage
 import os
 
 class SingletonType(type):
@@ -101,6 +102,7 @@ class QcloudHubProvider(object):
         self.__rrpc_map = {}
         self.__shadow_map = {}
         self.__broadcast_map = {}
+        self.__resource_map = {}
 
         self.__user_topics = []
         self.__user_topics_subscribe_request = {}
@@ -347,6 +349,15 @@ class QcloudHubProvider(object):
 
             broadcast = self.__broadcast_map[client]
             broadcast.handle_broadcast(topic, qos, payload, self.__userdata)
+
+        elif topic_prefix == "$resource":
+            if (client not in self.__resource_map.keys()
+                    or self.__resource_map[client] is None):
+                self._logger.error("[template] not found template handle for client:%s" % (client))
+                return None
+
+            resource = self.__resource_map[client]
+            resource.handle_resource(topic, qos, payload, self.__userdata)
 
         elif topic in self.__user_topics:
             if self.__user_callback[topic] is not None:
@@ -1290,7 +1301,7 @@ class QcloudHubProvider(object):
         if rc != 0:
             self._logger.error("[rrpc] publish error:rc:%d" % (rc))
         return rc, mid
-    
+
     def broadcastInit(self, productId, deviceName, callback):
         """Broadcast initialization
 
@@ -1434,6 +1445,94 @@ class QcloudHubProvider(object):
 
         shadow = self.__shadow_map[client]
         return shadow.shadow_json_construct_report(productId, *args)
+
+
+    # def resourceManageReply(self, productId, deviceName, reply, length):
+    #     client = productId + deviceName
+    #     if (client not in self.__resource_map.keys()
+    #             or self.__resource_map[client] is None):
+    #         self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
+    #         return None
+    #     resource = self.__resource_map[client]
+    #     //没有对应方法
+    #     rc, mid = resource.resource_reply(reply)
+    #     if rc != 0:
+    #         self._logger.error("[resource manage] publish error:rc:%d" % (rc))
+    #     return rc, mid
+
+
+    def resourceInit(self,productId, deviceName,callback):
+        if self.__hub_state is not self.__hub_state.CONNECTED:
+            raise self.StateError("current state is not CONNECTED")
+
+        resource = ResourceManage(self.__host, self.__device_info.product_id,
+                                  self.__device_info.device_name, self.__device_info.device_secret,
+                                  websocket=self.__useWebsocket, tls=self.__tls, logger=self._logger)
+        topic_sub = self._topic.resource_manager_topic_sub
+        rc, mid = resource.resource_init(productId, deviceName, callback)
+        if rc != 0:
+            self._logger.error("[resource manage] subscribe error:rc:%d,topic:%s" % (rc, topic_sub))
+            return rc, mid
+
+        """
+        等待订阅成功
+        """
+        cnt = 0
+        while cnt < 10:
+            if mid in self.__subscribe_res:
+                # 收到该mid回调,且其qos>=0说明订阅完成,qos=0需另做判断
+                if self.__subscribe_res[mid] >= 1:
+                    break
+            time.sleep(0.2)
+            cnt += 1
+            pass
+        if cnt >= 10:
+            return -1, mid
+
+        resource.resource_manager_init()
+
+        client = productId + deviceName
+        self.__resource_map[client] = resource
+
+        return rc, mid
+
+    def resourceCreateUploadTask(self, productId, deviceName, resourceFilePath):
+
+       """
+       :param productId:  产品ID
+       :param deviceName: 设备名称
+       :param resourceFilePath: 资源文件绝对路径
+       :return:
+       """
+
+       client = productId + deviceName
+       if (client not in self.__resource_map.keys()
+               or self.__resource_map[client] is None):
+         self._logger.error("[resource manage] not found ota handle for client:%s" % (client))
+         return -1, -1
+
+       resource = self.__resource_map[client]
+
+       if resourceFilePath is None or len(resourceFilePath) == 0:
+         raise ValueError('Invalid filePath param.')
+
+       #文件绝对路径
+       file_Path = resourceFilePath
+
+       #文件大小
+       fileSize = os.path.getsize(file_Path)
+       #文件名称
+       (filePath, tempfileName) = os.path.split(file_Path)
+       (fileName, extension) = os.path.splitext(tempfileName)
+       resourceFileName = fileName
+       #文件md5
+       fileMd5 = resource.resource_file_md5(file_Path)
+
+       rc, mid = resource.resource_create_upload_task(fileSize,resourceFileName,fileMd5)
+       if rc != 0:
+         self._logger.error("[resource manage] report version fail")
+        return rc, mid
+
 
     def otaInit(self, productId, deviceName, callback):
         """Ota initialization
