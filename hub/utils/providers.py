@@ -74,6 +74,11 @@ class TopicProvider(object):
 
         # broadcast
         self.__broadcast_topic_sub = "$broadcast/rxd/%s/%s" % (product_id, device_name)
+
+        # resource manager
+        self.__resource_manager_topic_pub = '$resource/up/service/%s/%s' % (product_id, device_name)
+        self.__resource_manager_topic_sub = '$resource/down/service/%s/%s' % (product_id, device_name)
+
         pass
 
     @property
@@ -159,6 +164,15 @@ class TopicProvider(object):
     @property
     def control_clientToken(self):
         return self.__clientToken
+
+    @property
+    def resource_manager_topic_pub(self):
+        return self.__resource_manager_topic_pub
+
+    @property
+    def resource_manager_topic_sub(self):
+        return self.__resource_manager_topic_sub
+
 
     # _on_template_downstream_topic_handler()中收到云端消息后保存client-token
     @control_clientToken.setter
