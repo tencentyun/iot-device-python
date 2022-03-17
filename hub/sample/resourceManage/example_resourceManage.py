@@ -6,9 +6,9 @@ from hub.hub import QcloudHub
 
 prduct_id = None
 device_name = None
-resource_reply = False
+resource_progress_reply = False
 logger = None
-
+uploadTaskUrl = None
 
 def on_connect(flags, rc, userdata):
     logger.debug("%s:flags:%d,rc:%d,userdata:%s" % (sys._getframe().f_code.co_name, flags, rc, userdata))
@@ -44,8 +44,19 @@ def on_unsubscribe(mid, userdata):
 def on_resourceManage_cb(topic, qos, payload, userdata):
     logger.debug("%s:payload:%s,userdata:%s" % (sys._getframe().f_code.co_name, payload, userdata))
 
-    global prduct_id
-    global device_name
+    global uploadTaskUrl
+    global resource_progress_reply
+    payloadDic = payload
+    uploadType = payloadDic["type"]
+
+    if 'url' in payloadDic:
+        uploadTaskUrl = payloadDic["url"]
+        if uploadTaskUrl is None or len(uploadTaskUrl) == 0:
+            raise ValueError('create_upload_task_rsp url Invalid param')
+    else:
+        if uploadType == "report_upload_progress_rsp":
+            if payloadDic["result_code"] == 0 and payloadDic["result_msg"] == "ok":
+                resource_progress_reply = True
 
     pass
 
@@ -96,13 +107,45 @@ def example_resourceManage(isTest=True):
         cnt = 0
 
         """*********需要传资源文件绝对路径*******"""
-        rc, mid = qcloud.resourceCreateUploadTask(prduct_id, device_name)
+        rc, mid = qcloud.resourceCreateUploadTask(prduct_id, device_name,"")
         # wait for ack
         time.sleep(1)
 
-        if rc == 0:
-            logger.debug("\033[1;36m resourceCreateUploadTask test success...\033[0m")
+        if rc != 0:
+            logger.error("\033[1;31m resource create upload task fail ...\033[0m")
+            return False
+
+        logger.debug("\033[1;36m resource create upload task test success...\033[0m")
+
+        #判断URL
+        if uploadTaskUrl is None or len(uploadTaskUrl) == 0:
+            logger.error("\033[1;31m create_upload_task_rsp url is empty\033[0m")
+            return False
+
+        #上传资源文件
+        rc, mid = qcloud.resourceReportUploadProgress(prduct_id, device_name)
+        if rc != 0:
+            logger.error("\033[1;31m resource upload file progress fail ...\033[0m")
+            return False
+
+        logger.debug("\033[1;36m resource upload file progress success ...\033[0m")
+
+        qcloud.resourceUploadfile(uploadTaskUrl)
+
+        if resource_progress_reply:
+
+            rc, mid = qcloud.resourceFinished()
+            if rc != 0:
+                logger.error("\033[1;31m resource http put upload file progress error ...\033[0m")
+                return False
+
+            logger.debug("\033[1;36m resource http put upload file progress finish ...\033[0m")
             break
+
+        else:
+
+            logger.error("\033[1;31m resource http put upload file progress fail ...\033[0m")
+            return False
 
     # qcloud.disconnect()
     logger.debug("\033[1;36m resourceManage test success...\033[0m")

@@ -75,6 +75,16 @@ class Codec(object):
         def encode(content):
             return base64.b64encode(content).decode('utf-8')
 
+        @staticmethod
+        def encodeHex(contentHex):
+
+            byte_array = bytes.fromhex(contentHex)
+            byte_array.hex()
+            base64_byte_array = base64.b64encode(byte_array)
+            result = base64_byte_array.decode('utf-8')
+            return result
+
+
     class Ssl():
         __IOT_CA_CRT = "\
 -----BEGIN CERTIFICATE-----\n\

@@ -50,11 +50,11 @@ class ResourceManage(object):
 
     def __assertFileSize(self, param):
         if param is None or param == 0:
-            raise ValueError('file content is empty. Invalid param')
+            raise ValueError('File transfer content is empty. Invalid param')
 
     def __assertFileMd5(self, param):
         if param is None or len(param) == 0:
-            raise ValueError('file md5 is empty. Invalid param ')
+            raise ValueError('File md5 is empty. Invalid param ')
 
     def handle_resource(self, topic, qos, payload, userdata):
 
@@ -97,6 +97,24 @@ class ResourceManage(object):
             "md5sum": md5sum,
         }
         return self.resource_publish(createTask,1)
+
+    def resource_report_upload_progress(self, name, percent, state):
+        self.__assertFileName(name)
+
+        if self.__resource_manage.state == self.ResourceState.IOT_RESOURCES_UNINITED:
+            raise ValueError('resource handle is uninitialized')
+
+        uploadProgress = {
+            "type": "report_upload_progress",
+            "name": name,
+            "progress": {
+                "state": state,
+                "percent": percent,
+                "result_code": 0,
+                "result_msg": ""
+            }
+        }
+        return self.resource_publish(uploadProgress, 1)
 
 
     def resource_file_md5(self, fileName):

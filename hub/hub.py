@@ -38,6 +38,7 @@ from hub.services.shadow.shadow import Shadow
 from hub.services.ota.ota import Ota
 from hub.services.resourceManage.resourceManage import ResourceManage
 import os
+import requests
 
 class SingletonType(type):
     _instance_lock = threading.Lock()
@@ -77,6 +78,7 @@ class QcloudHubProvider(object):
         self.__codec = Codec()
         self.__gateway = None
         self.__device_info = DeviceInfoProvider(device_file)
+        self.__resourceFilePath = None  #资源文件路径
 
         self.__hub_state = self.HubState.INITIALIZED
         self._topic = TopicProvider(self.__device_info.product_id, self.__device_info.device_name)
@@ -1447,20 +1449,6 @@ class QcloudHubProvider(object):
         return shadow.shadow_json_construct_report(productId, *args)
 
 
-    # def resourceManageReply(self, productId, deviceName, reply, length):
-    #     client = productId + deviceName
-    #     if (client not in self.__resource_map.keys()
-    #             or self.__resource_map[client] is None):
-    #         self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
-    #         return None
-    #     resource = self.__resource_map[client]
-    #     //没有对应方法
-    #     rc, mid = resource.resource_reply(reply)
-    #     if rc != 0:
-    #         self._logger.error("[resource manage] publish error:rc:%d" % (rc))
-    #     return rc, mid
-
-
     def resourceInit(self,productId, deviceName,callback):
         if self.__hub_state is not self.__hub_state.CONNECTED:
             raise self.StateError("current state is not CONNECTED")
@@ -1510,13 +1498,15 @@ class QcloudHubProvider(object):
        client = productId + deviceName
        if (client not in self.__resource_map.keys()
                or self.__resource_map[client] is None):
-         self._logger.error("[resource manage] not found ota handle for client:%s" % (client))
+         self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
          return -1, -1
 
        resource = self.__resource_map[client]
 
        if resourceFilePath is None or len(resourceFilePath) == 0:
          raise ValueError('Invalid filePath param.')
+
+       self.__resourceFilePath = resourceFilePath
 
        #文件绝对路径
        file_Path = resourceFilePath
@@ -1535,9 +1525,103 @@ class QcloudHubProvider(object):
          self._logger.error("[resource manage] resource_create_upload_task fail")
 
        if rc == 0:
-           self._logger.error("resource_create_upload_task create success")
+           self._logger.debug("resource_create_upload_task create success")
        return rc, mid
 
+    def resourceReportUploadProgress(self, productId, deviceName):
+
+        client = productId + deviceName
+        if (client not in self.__resource_map.keys()
+                or self.__resource_map[client] is None):
+            self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
+            return -1, -1
+
+        resource = self.__resource_map[client]
+
+        if self.__resourceFilePath is None or len(self.__resourceFilePath) == 0:
+            raise ValueError('Invalid filePath param.')
+
+        # 文件名称
+        (filePath, tempfileName) = os.path.split(self.__resourceFilePath)
+        (fileName, extension) = os.path.splitext(tempfileName)
+
+        rc, mid = resource.resource_report_upload_progress(fileName, 100,"uploading")
+
+        if rc != 0:
+            self._logger.error("[resource manage] resource_report_upload_progress fail")
+        if rc == 0:
+            self._logger.debug("resource_report_upload_progress success")
+        return rc, mid
+
+    def resourceUploadfile(self, uploadTaskUrl, timeout=10):
+
+        """
+        上传资源
+        :param uploadTaskUrl: 上传URL
+        :param timeout: 超时时间
+        :return: rc mid
+        """
+        client = self.__device_info.product_id + self.__device_info.device_name
+        if (client not in self.__resource_map.keys()
+                or self.__resource_map[client] is None):
+            self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
+            return -1, -1
+
+        resource = self.__resource_map[client]
+
+        if uploadTaskUrl is None or len(uploadTaskUrl) == 0:
+            self._logger.error('resource upload url invalid param.')
+            return -1, -1
+
+        fileSize = os.path.getsize(self.__resourceFilePath)
+
+        file = open(self.__resourceFilePath)
+        fileConent = file.read()
+        file.close()
+
+        fileMd5 = resource.resource_file_md5(self.__resourceFilePath)
+
+        sign_base64 = self.__codec.Base64.encodeHex(fileMd5)
+
+        header = {
+            "Content-Length": str(fileSize),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-MD5": sign_base64,
+        }
+
+        request_text = fileConent
+        data = bytes(request_text, encoding='utf-8')
+
+        r = requests.put(uploadTaskUrl, data=data, headers=header)
+        if r.status_code == 200:
+            return 0, 0
+        else:
+            self._logger.error("put request fail status code:%s  reason:%s",r.status_code,r.reason)
+            return -1, -1
+
+    def resourceFinished(self):
+
+        client = self.__device_info.product_id + self.__device_info.device_name
+        if (client not in self.__resource_map.keys()
+                or self.__resource_map[client] is None):
+            self._logger.error("[resource manage] not found resource handle for client:%s" % (client))
+            return -1, -1
+
+        resource = self.__resource_map[client]
+
+        if self.__resourceFilePath is None or len(self.__resourceFilePath) == 0:
+            raise ValueError('Invalid filePath param.')
+
+        # 文件名称
+        (filePath, tempfileName) = os.path.split(self.__resourceFilePath)
+        (fileName, extension) = os.path.splitext(tempfileName)
+
+        rc, mid = resource.resource_report_upload_progress(fileName, 100, "done")
+        if rc != 0:
+            self._logger.debug("resource_report_upload_progress finish error ")
+        if rc == 0:
+            self._logger.error("[resource manage] resource_report_upload_progress finish")
+        return rc, mid
 
     def otaInit(self, productId, deviceName, callback):
         """Ota initialization
