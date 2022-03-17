@@ -38,7 +38,6 @@ from hub.services.shadow.shadow import Shadow
 from hub.services.ota.ota import Ota
 from hub.services.resourceManage.resourceManage import ResourceManage
 import os
-import requests
 
 class SingletonType(type):
     _instance_lock = threading.Lock()
@@ -1592,12 +1591,24 @@ class QcloudHubProvider(object):
         request_text = fileConent
         data = bytes(request_text, encoding='utf-8')
 
-        r = requests.put(uploadTaskUrl, data=data, headers=header)
-        if r.status_code == 200:
-            return 0, 0
-        else:
-            self._logger.error("put request fail status code:%s  reason:%s",r.status_code,r.reason)
-            return -1, -1
+        context = None
+        if self.__tls:
+            context = self.__codec.Ssl().create_content()
+
+        req = urllib.request.Request(uploadTaskUrl, data=data, headers=header, method='PUT')
+        with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
+            if url_file.status == 200 and url_file.reason == 'ok':
+                return 0, 0
+            else:
+                self._logger.error("put request fail status code:%s  reason:%s",url_file.status,url_file.reason)
+                return -1, -1
+
+        # r = requests.put(uploadTaskUrl, data=data, headers=header)
+        # if r.status_code == 200:
+        #     return 0, 0
+        # else:
+        #     self._logger.error("put request fail status code:%s  reason:%s",r.status_code,r.reason)
+        #     return -1, -1
 
     def resourceFinished(self):
 
