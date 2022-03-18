@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0ecf190_02177736",
+        "filename": "hub/sample/resourceManage/example_resourceManage.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2022-03-18T02:00:40Z",
+      "side": 1,
+      "message": "isTest貌似没用到",
+      "revId": "e0244e5374cd0e0191d8592f6b4592c96f0ad8c1",
+      "serverId": "bfd29338-1d98-4536-875c-f9d1fff7ae29",
+      "unresolved": true
+    }
+  ]
+}
