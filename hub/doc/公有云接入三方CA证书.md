@@ -39,8 +39,6 @@
 -  运行 sample 事例 ``python3 hub/sample/test.py``
 
 	```
-	(test_env) eagleychen@EAGLEYCHEN-MB0 iot-device-python % python3 hub/sample/test.py         
-
 	init sdk
 	2022-05-20 15:22:51,821.821 [log.py:46] - DEBUG -  mqtt test start...
 	2022-05-20 15:22:51,822.822 [log.py:46] - DEBUG - LoopThread thread enter
