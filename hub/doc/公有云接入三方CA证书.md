@@ -2,11 +2,11 @@
 
 **1.生成测试CA证书、验证证书、设备证书以及设备私钥**
 
--  [官网证书管理文档](https://cloud.tencent.com/document/product/634/59363)，参考此链接文档将生成好的CA证书和设备证书上传至控制台，创建基于三房CA的产品和设备，此过程需注意生成证书的 Common Name 需正确填写，请按照文档顺序生成证书。测试CA证书可替换为厂商提供的CA证书。**注意**如需支持证书其他算法，如支持SM2算法，需同产品对接人沟通方案
+-  [官网证书管理文档](https://cloud.tencent.com/document/product/634/59363)，参考此链接文档将生成好的 CA 证书和设备证书上传至控制台，创建基于三方 CA 的产品和设备，此过程需注意生成证书的 Common Name 需正确填写，请按照文档顺序生成证书。测试 CA 证书可替换为厂商提供的 CA 证书。**注意**如需支持证书其他算法，如支持 SM2 算法，需同产品对接人沟通方案
 
 -  需注意生成过程中，如上传证书不支持格式，可将 openssl 命令中 crt 改为 cer
 
--  mac 环境 openssl.cnf 文件在目录中可找到 /System/Library/OpenSSL/openssl.cnf
+-  mac 环境 openssl.cnf 文件在系统目录中可找到 /System/Library/OpenSSL/openssl.cnf
 
 
 
@@ -32,7 +32,7 @@
 			"devPrivateKeyFile":"/Users/xxx/Desktop/tencent/iot-device-python/hub/sample/dev_01.key"
 	    },
 	    "region":"china"
-}
+	}
 	```
 
 
