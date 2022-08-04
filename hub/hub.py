@@ -910,6 +910,7 @@ class QcloudHubProvider(object):
         with urllib.request.urlopen(req, timeout=timeout, context=context) as url_file:
             reply_data = url_file.read().decode('utf-8')
             reply_obj = json.loads(reply_data)
+            self._logger.debug(f"动态注册请求: {data}\n响应: {reply_obj}\n")
             resp = reply_obj['Response']
             if 'Len' in resp and resp['Len'] > 0:
                 reply_obj_data = reply_obj['Response']["Payload"]
