@@ -23,7 +23,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/tencentyun/iot-device-python",
     packages=setuptools.find_packages(),
-    install_requires = ["paho-mqtt==1.5.1", "pycrypto==2.6.1"],
+    install_requires = ["paho-mqtt==1.5.1", "pycryptodome==3.15.0"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
