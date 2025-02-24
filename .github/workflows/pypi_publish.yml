@@ -24,9 +24,9 @@ jobs:
 
     - name: Install dependencies
       run: |
+        pip install setuptools wheel twine
         python setup.py check
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
 
     - name: Unittest TestCase
       env:
