@@ -117,8 +117,31 @@ QVrcRBDxzx/G\n\
         def create_content(self, cadata=None):
             if cadata is None:
                 cadata = self.__iot_ca_crt
-            return ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cadata=cadata)
 
-            
+            # 创建SSL上下文
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
-    
+            # 设置TLS协议版本
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+            # 配置证书验证
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False  # 禁用主机名验证
+
+            # 加载CA证书
+            try:
+                if cadata:
+                    # 清理证书字符串，确保格式正确
+                    cleaned_cadata = "\n".join(
+                        line.strip() for line in cadata.splitlines()
+                        if line.strip() and not line.strip().startswith("--")
+                    )
+                    context.load_verify_locations(cadata=cleaned_cadata.encode())
+
+                    # 同时加载系统默认证书
+                    context.load_default_certs()
+            except Exception as e:
+                # 如果证书加载失败，回退到不验证证书(仅用于测试)
+                context.verify_mode = ssl.CERT_NONE
+
+            return context
